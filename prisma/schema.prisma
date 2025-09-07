@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role    
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  leads    Lead[]    @relation("LeadOwner")
+  invites  Invite[]  @relation("UserInvites")
+  accounts Account[]
+  sessions Session[]
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  source      String?
+  notes       String?
+  priority    LeadPriority @default(MEDIUM)  // NEW
+  onboarded   Boolean   @default(false)      // NEW
+  followUpDate DateTime?                     // NEW
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  ownerId String
+  owner   User       @relation("LeadOwner", fields: [ownerId], references: [id])
+
+  stageId  String
+  stage    LeadStage @relation(fields: [stageId], references: [id])
+
+  statusId String
+  status   LeadStatusModel @relation(fields: [statusId], references: [id])
+
+  followUps FollowUp[]
+}
+
+enum LeadPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+
+model LeadStage {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g., NEW, REVIEWED, REJECTED, VALIDATED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads Lead[]
+}
+
+model LeadStatusModel {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g., NEW, PROPOSAL_SENT, PROPOSAL_CONFIRMED, AGREED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads Lead[]
+}
+
+model FollowUp {
+  id        String   @id @default(cuid())
+  date      DateTime
+  notes     String?
+  leadId    String
+  lead      Lead @relation(fields: [leadId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+
+model Invite {
+  id          String       @id @default(uuid())
+  email       String
+  token       String       @unique
+  status      InviteStatus @default(PENDING)
+  invitedById String
+  invitedBy   User         @relation("UserInvites", fields: [invitedById], references: [id])
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  USER
+  ADMIN
+  SALES
+  PDM
+  CUSTOMER_CARE
+  VIEWER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
