@@ -78,7 +78,10 @@ export default function LeadsPage() {
         </div>
 
         {isLoading ? (
-          <div>Loading...</div>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div>Loading...</div>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -95,7 +98,10 @@ export default function LeadsPage() {
               </thead>
               <tbody>
                 {data?.leads?.map((l: any) => (
-                  <tr key={l.id} className="border-t hover:bg-gray-50">
+                  <tr
+                    key={l.id}
+                    className="border-t hover:bg-gray-50  even:bg-gray-50/50"
+                  >
                     <td className="py-3 pr-6">
                       <Link
                         href={`/dashboard/leads/${l.id}`}
@@ -108,7 +114,7 @@ export default function LeadsPage() {
                       <div>{l.email}</div>
                       <div className="text-xs text-gray-500">{l.phone}</div>
                     </td>
-                    <td className="py-3 pr-6">{l.status}</td>
+                    <td className="py-3 pr-6">{l.status?.name ?? "-"}</td>
                     <td className="py-3 pr-6">{l.priority}</td>
                     <td className="py-3 pr-6">{l.owner?.name}</td>
                     <td className="py-3 pr-6">
@@ -127,7 +133,15 @@ export default function LeadsPage() {
               </tbody>
             </table>
             {!data?.leads?.length && (
-              <div className="p-4 text-gray-500">No leads found</div>
+              <div className="text-center p-8 text-gray-500 border-t">
+                No leads found.{" "}
+                <Link
+                  href="/dashboard/leads/new"
+                  className="text-blue-600 hover:underline"
+                >
+                  Create one?
+                </Link>
+              </div>
             )}
           </div>
         )}
