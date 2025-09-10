@@ -25,6 +25,10 @@ export default withAuth(
     const token = (req as any).auth?.token;
     const pathname = req.nextUrl.pathname;
 
+    if (pathname.includes("/api/auth/") || pathname === "/login") {
+      return NextResponse.next();
+    }
+
     // 2. Check if the user is trying to access a role-based route
     for (const [route, allowedRoles] of Object.entries(roleBasedRoutes)) {
       if (pathname.startsWith(route)) {
@@ -47,6 +51,10 @@ export default withAuth(
       // 6. This callback controls which pages are protected by withAuth
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
+
+        if (pathname.includes("/api/auth/") || pathname === "/login") {
+          return true;
+        }
 
         // 7. Check if the current path is in our roleBasedRoutes
         const isProtectedRoute = Object.keys(roleBasedRoutes).some((route) =>

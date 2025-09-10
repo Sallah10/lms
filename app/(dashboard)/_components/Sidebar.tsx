@@ -111,10 +111,10 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <motion.aside
-        initial={{ x: -300 }}
-        animate={{ x: isOpen ? 0 : -300 }}
+        initial={false} // Disable initial animation
+        animate={window.innerWidth < 1024 ? { x: isOpen ? 0 : -300 } : { x: 0 }} // Only animate on mobile
         transition={{ type: "spring", damping: 25 }}
-        className="fixed lg:static inset-y-0 left-0 w-64 bg-white shadow-md p-4 z-40 lg:z-auto lg:block"
+        className="fixed lg:translate-x-0 lg:static inset-y-0 left-0 w-64 bg-white shadow-md p-4 z-40 lg:z-auto"
       >
         <h2 className="text-xl font-bold mb-6">LMS</h2>
         <nav className="flex flex-col gap-3">

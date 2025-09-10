@@ -3,35 +3,72 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
-// This is the secret key that will be shared between the Internal System and the External Portal
 const EXPECTED_API_KEY = process.env.INTERNAL_API_KEY;
 
 export async function POST(req: Request) {
-  // 1. Check the API Key from the request header
   const apiKey = req.headers.get("x-api-key");
 
   if (apiKey !== EXPECTED_API_KEY) {
-    return new NextResponse("Invalid API Key", { status: 401 });
+    return NextResponse.json({ error: "Invalid API Key" }, { status: 401 });
   }
+
+  console.log("External lead API called");
 
   try {
     const body = await req.json();
-    const { name, email, phone, source, notes, salesUserId } = body;
+    console.log("Incoming body:", body);
+
+    // DESTRUCTURE salesUserEmail FROM THE BODY
+    const {
+      name,
+      email,
+      phone,
+      source,
+      notes,
+      address,
+      salesUserId,
+      salesUserEmail,
+    } = body;
 
     // 2. Basic validation
-    if (!name || !email || !salesUserId) {
-      return new NextResponse("Name, email, and salesUserId are required", {
-        status: 400,
-      });
+    if (!name || !email) {
+      return NextResponse.json(
+        { error: "Name and email are required" },
+        { status: 400 }
+      );
     }
 
-    // 3. Verify the salesUserId exists and is a SALES user
-    const salesUser = await prisma.user.findUnique({
-      where: { id: salesUserId, role: Role.SALES },
+    if (!salesUserId && !salesUserEmail) {
+      return NextResponse.json(
+        { error: "Either salesUserId or salesUserEmail is required" },
+        { status: 400 }
+      );
+    }
+
+    let salesUser = await prisma.user.findUnique({
+      where: { id: salesUserId },
     });
 
+    // Ensure role is SALES
+    if (salesUser && salesUser.role !== Role.SALES) {
+      salesUser = null;
+    }
+
+    // FALLBACK: If not found by ID, try email lookup (if provided)
+    if (!salesUser && salesUserEmail) {
+      salesUser = await prisma.user.findFirst({
+        where: { email: salesUserEmail, role: Role.SALES },
+      });
+      if (salesUser) {
+        console.log("Resolved sales user by email =>", salesUser.id);
+      }
+    }
+
     if (!salesUser) {
-      return new NextResponse("Invalid sales user ID", { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid sales user ID (no matching SALES user)" },
+        { status: 400 }
+      );
     }
 
     // 4. Find default stages/statuses
@@ -41,12 +78,13 @@ export async function POST(req: Request) {
     ]);
 
     if (!newStage || !newStatus) {
-      return new NextResponse("Default lead stage or status not configured", {
-        status: 500,
-      });
+      return NextResponse.json(
+        { error: "Default lead stage or status not configured" },
+        { status: 500 }
+      );
     }
 
-    // 5. Create the lead in the internal database, assigned to the provided sales user
+    // 5. Create the lead in the internal database
     const lead = await prisma.lead.create({
       data: {
         name,
@@ -54,8 +92,9 @@ export async function POST(req: Request) {
         phone: phone || "",
         source: source || "External Portal",
         notes: notes || "",
+        address: address || "", // ADDED ADDRESS FIELD
         priority: "MEDIUM",
-        ownerId: salesUserId, // Assign to the sales user from the portal
+        ownerId: salesUser.id, // Use the resolved user's ID
         stageId: newStage.id,
         statusId: newStatus.id,
       },
@@ -67,6 +106,9 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error("External Lead API Error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

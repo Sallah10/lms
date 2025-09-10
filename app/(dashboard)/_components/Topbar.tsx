@@ -5,7 +5,7 @@ import { signOut } from "next-auth/react";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function Topbar({ user }: { user: any }) {
   return (
-    <header className="flex items-center justify-between border-b bg-white p-4 lg:ml-64">
+    <header className="flex items-center justify-between border-b bg-white p-4">
       {" "}
       {/* Add margin for sidebar */}
       <div>

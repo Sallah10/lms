@@ -23,12 +23,12 @@ export default async function DashboardLayout({
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Navigation Bar */}
         <Topbar user={session.user} />
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6  overflow-y-auto">
           <ReactQueryProvider>{children}</ReactQueryProvider>
         </main>
       </div>

@@ -45,6 +45,9 @@ export const authOptions: AuthOptions = {
     //   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     // }),
   ],
+  pages: {
+    signIn: "/login", // This tells NextAuth to use your custom login page
+  },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -66,7 +69,20 @@ export const authOptions: AuthOptions = {
       return token;
     },
   },
+
   secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production", // Secure in production only
+        maxAge: 30 * 24 * 60 * 60, // ← 30 days for the cookie too
+      },
+    },
+  },
 };
 
 export default NextAuth(authOptions);
