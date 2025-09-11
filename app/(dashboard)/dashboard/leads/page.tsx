@@ -1,151 +1,161 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// app/(dashboard)/leads/page.tsx
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-
-async function fetchLeads(
-  params: { q?: string; status?: string; priority?: string } = {}
-) {
-  const url = new URL("/api/leads", location.origin);
-  if (params.q) url.searchParams.set("q", params.q);
-  if (params.status) url.searchParams.set("status", params.status);
-  if (params.priority) url.searchParams.set("priority", params.priority);
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error("Failed to fetch leads");
-  return res.json();
-}
+import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
+import { Download, Upload, Plus } from "lucide-react";
+import CsvImporter from "@/app/(dashboard)/_components/CsvImporter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function LeadsPage() {
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["leads", q, status, priority],
-    queryFn: () => fetchLeads({ q, status, priority }),
-  });
+  // Export Function for Export files;
+  const handleExport = async () => {
+    try {
+      // Build query string from current filters (which are in THIS component)
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (priorityFilter !== "all") params.append("priority", priorityFilter);
+      if (searchTerm) params.append("search", searchTerm);
+
+      const url = `/api/leads/export?${params.toString()}`;
+
+      // Trigger download
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Export failed");
+
+      // Create download link
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `leads-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Failed to export leads. Please try again.");
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Leads</h1>
-        <Link
-          href="/dashboard/leads/new"
-          className="px-3 py-2 bg-blue-600 text-white rounded"
-        >
-          Create New Lead
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+          <Link href="/dashboard/leads/new">
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Create New
+            </Button>
+          </Link>
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold">Leads</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your partner leads and track their status
+          </p>
+        </div>
+        <Link href="/dashboard/leads/new">
+          <Button>Create New Lead</Button>
         </Link>
       </div>
 
-      <div className="bg-white p-4 rounded shadow">
-        <div className="flex gap-3 items-center mb-4">
-          <input
-            placeholder="Search name or email..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="border rounded p-2 w-full"
+      {/* Filters Card */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <Input
+            placeholder="Search partners or contacts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:max-w-sm"
           />
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="border rounded p-2"
-          >
-            <option value="">All status</option>
-            <option value="PROPOSAL_SENT">Proposal sent</option>
-            <option value="ONBOARDING">Onboarding</option>
-            <option value="ONBOARDED">Onboarded</option>
-          </select>
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="border rounded p-2"
-          >
-            <option value="">All priority</option>
-            <option value="LOW">Low</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HIGH">High</option>
-            <option value="URGENT">Urgent</option>
-          </select>
-          <button
-            onClick={() => refetch()}
-            className="px-3 py-2 bg-gray-100 rounded"
-          >
-            Filter
-          </button>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="NEW">New</SelectItem>
+              <SelectItem value="REVIEWED">Reviewed</SelectItem>
+              <SelectItem value="VERIFIED">Verified</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+              {/* CORE STATUS FILTERS */}
+              <SelectItem value="PROPOSAL_SENT">Proposal Sent</SelectItem>
+              <SelectItem value="PROPOSAL_CONFIRMED">
+                Proposal Confirmed
+              </SelectItem>
+              <SelectItem value="AGREED">Agreed</SelectItem>
+              <SelectItem value="ONBOARDING">Onboarding</SelectItem>
+              <SelectItem value="ONBOARDED">Onboarded</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="LOW">Low</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <div>Loading...</div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="text-xs text-gray-500 text-left">
-                <tr>
-                  <th className="py-2 pr-6">Partner</th>
-                  <th className="py-2 pr-6">Contact</th>
-                  <th className="py-2 pr-6">Status</th>
-                  <th className="py-2 pr-6">Priority</th>
-                  <th className="py-2 pr-6">Sales</th>
-                  <th className="py-2 pr-6">Created</th>
-                  <th className="py-2 pr-6">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.leads?.map((l: any) => (
-                  <tr
-                    key={l.id}
-                    className="border-t hover:bg-gray-50  even:bg-gray-50/50"
-                  >
-                    <td className="py-3 pr-6">
-                      <Link
-                        href={`/dashboard/leads/${l.id}`}
-                        className="text-blue-600 font-medium"
-                      >
-                        {l.name}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-6">
-                      <div>{l.email}</div>
-                      <div className="text-xs text-gray-500">{l.phone}</div>
-                    </td>
-                    <td className="py-3 pr-6">{l.status?.name ?? "-"}</td>
-                    <td className="py-3 pr-6">{l.priority}</td>
-                    <td className="py-3 pr-6">{l.owner?.name}</td>
-                    <td className="py-3 pr-6">
-                      {new Date(l.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 pr-6">
-                      <Link
-                        href={`/dashboard/leads/${l.id}/edit`}
-                        className="text-sm text-blue-600"
-                      >
-                        Edit
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!data?.leads?.length && (
-              <div className="text-center p-8 text-gray-500 border-t">
-                No leads found.{" "}
-                <Link
-                  href="/dashboard/leads/new"
-                  className="text-blue-600 hover:underline"
-                >
-                  Create one?
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Enhanced Leads Table */}
+      <EnhancedLeadsTable
+        searchTerm={searchTerm}
+        statusFilter={statusFilter}
+        priorityFilter={priorityFilter}
+      />
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Import Leads from CSV</h3>
+              <Button variant="ghost" onClick={() => setShowImportModal(false)}>
+                ×
+              </Button>
+            </div>
+            <CsvImporter />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
