@@ -25,7 +25,7 @@ const allNavItems = [
     name: "My Leads",
     href: "/dashboard/my-leads",
     icon: "🎯",
-    roles: ["ADMIN", "SALES"],
+    roles: ["ADMIN", "SALES", "PDM", "CUSTOMER_CARE"],
   },
   {
     name: "Review",

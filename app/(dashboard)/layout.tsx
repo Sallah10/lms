@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import Sidebar from "./_components/Sidebar";
 import Topbar from "./_components/Topbar";
 import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
-import { ToastProvider } from "@/providers/ToastProvider";
 
 export default async function DashboardLayout({
   children,
@@ -30,10 +29,7 @@ export default async function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 p-6  overflow-y-auto">
-          <ReactQueryProvider>
-            {children}
-            <ToastProvider />
-          </ReactQueryProvider>
+          <ReactQueryProvider>{children}</ReactQueryProvider>
         </main>
       </div>
     </div>

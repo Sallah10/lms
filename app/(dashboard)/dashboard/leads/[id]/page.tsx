@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { DeleteLeadButton } from "@/app/(dashboard)/_components/DeleteLeadButton";
+import { ActivityLogs } from "@/components/ActivityLogs";
 
 interface PageProps {
   params: { id: string };
@@ -267,6 +268,14 @@ export default async function LeadDetailPage({ params }: PageProps) {
                   </span>
                 </div>
               )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityLogs leadId={params.id} />
             </CardContent>
           </Card>
         </div>

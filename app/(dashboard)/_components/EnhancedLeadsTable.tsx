@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// app/(dashboard)/_components/EnhancedLeadsTable.tsx - FIXED VERSION
 "use client";
 
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react"; // ADD THIS IMPORT
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ import {
   Calendar,
   MoreHorizontal,
   ArrowUpDown,
+  Trash2, // ADD FOR DELETE ACTION
 } from "lucide-react";
 
 interface Owner {
@@ -35,29 +38,17 @@ interface Status {
 interface Lead {
   id: string;
   name: string;
-
   address: string;
   email: string;
   phone?: string | null;
   service?: string | null;
   source?: string | null;
   priority: "LOW" | "MEDIUM" | "HIGH";
-  // status: "NEW" | "REVIEWED" | "VERIFIED" | "REJECTED";
-  // status:
-  //   | "NEW"
-  //   | "REVIEWED"
-  //   | "VERIFIED"
-  //   | "REJECTED"
-  //   | "PROPOSAL_SENT"
-  //   | "PROPOSAL_CONFIRMED"
-  //   | "AGREED"
-  //   | "AWAITING_ONBOARDING"
-  //   | "ONBOARDING"
-  //   | "ONBOARDED";
   status: Status;
   nextFollowUp?: string | null;
   createdAt: string;
   owner?: Owner | null;
+  ownerId?: string; // ADD THIS PROPERTY
 }
 
 interface LeadsResponse {
@@ -74,21 +65,32 @@ interface EnhancedLeadsTableProps {
   searchTerm?: string;
   statusFilter?: string;
   priorityFilter?: string;
+  assignedFilter?: string;
+  showActions?: boolean;
+  showBulkActions?: boolean;
+  fetchFunction?: () => Promise<LeadsResponse>;
+  queryKey?: string[];
 }
 
 export default function EnhancedLeadsTable({
   searchTerm = "",
   statusFilter = "all",
   priorityFilter = "all",
+  assignedFilter = "all",
+  showActions = true,
+  showBulkActions = true,
+  fetchFunction = fetchLeads,
+  queryKey = ["leads"],
 }: EnhancedLeadsTableProps) {
   const queryClient = useQueryClient();
+  const { data: session } = useSession(); // GET SESSION
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["leads"],
-    queryFn: fetchLeads,
+    queryKey: queryKey, // USE THE PASSED QUERY KEY
+    queryFn: fetchFunction, // USE THE PASSED FETCH FUNCTION
   });
 
   const handleSort = (field: string) => {
@@ -109,8 +111,7 @@ export default function EnhancedLeadsTable({
       });
 
       if (res.ok) {
-        // SUCCESS: Invalidate the query to refetch fresh data
-        queryClient.invalidateQueries({ queryKey: ["leads"] });
+        queryClient.invalidateQueries({ queryKey: queryKey }); // USE PASSED QUERY KEY
         setSelectedLeads([]);
         alert(`Status updated successfully for ${selectedLeads.length} leads!`);
       } else {
@@ -120,6 +121,34 @@ export default function EnhancedLeadsTable({
     } catch (error) {
       console.error("Bulk update error:", error);
       alert("An error occurred during the bulk update.");
+    }
+  };
+
+  // ADD DELETE FUNCTION
+  const handleDeleteLead = async (leadId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this lead? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: queryKey });
+        alert("Lead deleted successfully!");
+      } else {
+        const error = await res.text();
+        alert(`Failed to delete: ${error}`);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("An error occurred while deleting the lead.");
     }
   };
 
@@ -155,12 +184,23 @@ export default function EnhancedLeadsTable({
       const matchesPriority =
         priorityFilter === "all" || lead.priority === priorityFilter;
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      // FIXED: Use lead.owner?.id instead of lead.ownerId
+      const matchesAssigned =
+        assignedFilter === "all" ||
+        (assignedFilter === "unassigned" && !lead.owner?.id) ||
+        (assignedFilter === "me" && lead.owner?.id === session?.user?.id) ||
+        (assignedFilter !== "all" &&
+          assignedFilter !== "unassigned" &&
+          assignedFilter !== "me" &&
+          lead.owner?.id === assignedFilter);
+
+      return (
+        matchesSearch && matchesStatus && matchesPriority && matchesAssigned
+      );
     });
 
     // Apply sorting
     filtered.sort((a, b) => {
-      // Get values for sorting - use type assertion to handle different types
       let aValue: any = a[sortField as keyof typeof a];
       let bValue: any = b[sortField as keyof typeof b];
 
@@ -170,7 +210,7 @@ export default function EnhancedLeadsTable({
         bValue = b.owner?.name || "";
       }
 
-      // Handle date fields - convert to timestamps for comparison
+      // Handle date fields
       if (sortField === "createdAt" || sortField === "nextFollowUp") {
         aValue = aValue ? new Date(aValue).getTime() : 0;
         bValue = bValue ? new Date(bValue).getTime() : 0;
@@ -198,8 +238,10 @@ export default function EnhancedLeadsTable({
     searchTerm,
     statusFilter,
     priorityFilter,
+    assignedFilter,
     sortField,
     sortDirection,
+    session?.user?.id, // ADD SESSION DEPENDENCY
   ]);
 
   if (isLoading)
@@ -213,8 +255,8 @@ export default function EnhancedLeadsTable({
 
   return (
     <div className="space-y-4">
-      {/* Bulk Actions Bar */}
-      {selectedLeads.length > 0 && (
+      {/* Bulk Actions Bar - Conditionally rendered */}
+      {showBulkActions && selectedLeads.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
           <span className="text-sm text-blue-800">
             {selectedLeads.length} lead(s) selected
@@ -242,7 +284,6 @@ export default function EnhancedLeadsTable({
               >
                 Mark as Rejected
               </DropdownMenuItem>
-              {/* CORE STATUS OPTIONS */}
               <DropdownMenuItem
                 onClick={() => handleBulkStatusChange("PROPOSAL_SENT")}
               >
@@ -278,15 +319,17 @@ export default function EnhancedLeadsTable({
         <table className="w-full">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="p-3 w-12">
-                <Checkbox
-                  checked={
-                    selectedLeads.length === processedLeads.length &&
-                    processedLeads.length > 0
-                  }
-                  onCheckedChange={toggleSelectAll}
-                />
-              </th>
+              {showBulkActions && ( // Conditionally show checkbox column
+                <th className="p-3 w-12">
+                  <Checkbox
+                    checked={
+                      selectedLeads.length === processedLeads.length &&
+                      processedLeads.length > 0
+                    }
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </th>
+              )}
               <th
                 className="p-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("name")}
@@ -318,19 +361,6 @@ export default function EnhancedLeadsTable({
                     (sortDirection === "asc" ? "↑" : "↓")}
                 </div>
               </th>
-              {/* address */}
-              {/* <th
-                className="p-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort("address")}
-              >
-                <div className="flex items-center">
-                  Address
-                  <ArrowUpDown className="ml-1 h-3 w-3" />
-                  {sortField === "address" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </div>
-              </th>
-              address end here , trying to test sth */}
               <th
                 className="p-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("priority")}
@@ -375,20 +405,24 @@ export default function EnhancedLeadsTable({
                     (sortDirection === "asc" ? "↑" : "↓")}
                 </div>
               </th>
-              <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Actions
-              </th>
+              {showActions && ( // Conditionally show actions column
+                <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {processedLeads.map((lead) => (
               <tr key={lead.id} className="border-b hover:bg-gray-50">
-                <td className="p-3">
-                  <Checkbox
-                    checked={selectedLeads.includes(lead.id)}
-                    onCheckedChange={() => toggleSelectLead(lead.id)}
-                  />
-                </td>
+                {showBulkActions && ( // Conditionally show checkbox cell
+                  <td className="p-3">
+                    <Checkbox
+                      checked={selectedLeads.includes(lead.id)}
+                      onCheckedChange={() => toggleSelectLead(lead.id)}
+                    />
+                  </td>
+                )}
                 <td className="p-3">
                   <div className="font-medium">{lead.name}</div>
                   <div className="text-sm text-gray-500">{lead.address}</div>
@@ -440,7 +474,7 @@ export default function EnhancedLeadsTable({
                         ? "bg-teal-100 text-teal-800"
                         : lead.status.name === "ONBOARDING"
                         ? "bg-cyan-100 text-cyan-800"
-                        : "bg-gray-100 text-gray-800" // ONBOARDED or others
+                        : "bg-gray-100 text-gray-800"
                     }
                   >
                     {lead.status.name}
@@ -459,13 +493,26 @@ export default function EnhancedLeadsTable({
                 <td className="p-3 text-sm">
                   {new Date(lead.createdAt).toLocaleDateString()}
                 </td>
-                <td className="p-3">
-                  <Link href={`/dashboard/leads/${lead.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </td>
+                {showActions && ( // Conditionally show actions cell
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/dashboard/leads/${lead.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      {session?.user?.role === "ADMIN" && ( // Only show delete for admins
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLead(lead.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

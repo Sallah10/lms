@@ -13,20 +13,40 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
+    const myLeads = url.searchParams.get("myLeads") === "true";
     const q = url.searchParams.get("q") || undefined;
     const status = url.searchParams.get("status") || undefined;
     const priority = url.searchParams.get("priority") || undefined;
     const limit = Math.min(Number(url.searchParams.get("limit") || "50"), 1000);
+    const assigned = url.searchParams.get("assigned") || undefined;
 
     // 2. Build the WHERE clause based on user role
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
+
+    // If myLeads=true or user is SALES, only show their own leads
+    if (myLeads) {
+      where.ownerId = session.user.id;
+    }
+
+    // Otherwise, apply normal role-based filtering
+    else if (session.user.role === "SALES") {
+      where.ownerId = session.user.id;
+    }
 
     // SALES users can only see their own leads
     if (session.user.role === Role.SALES) {
       where.ownerId = session.user.id;
     }
     // ADMIN, PDM, CUSTOMER_CARE see all leads (no extra filter)
+
+    if (assigned === "unassigned") {
+      where.ownerId = null;
+    } else if (assigned === "me") {
+      where.ownerId = session.user.id;
+    } else if (assigned && assigned !== "all") {
+      where.ownerId = assigned; // Specific user ID
+    }
 
     if (q) {
       where.OR = [
@@ -109,6 +129,16 @@ export async function POST(req: Request) {
         owner: { select: { name: true } },
         stage: { select: { name: true } },
         status: { select: { name: true } },
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        action: "LEAD_CREATED",
+        details: `Lead "${lead.name}" created`,
+        newValue: lead.name,
+        leadId: lead.id,
+        userId: session.user.id,
       },
     });
 

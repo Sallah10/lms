@@ -19,6 +19,19 @@ export async function GET(req: Request) {
     const statusFilter = searchParams.get("status");
     const priorityFilter = searchParams.get("priority");
 
+    const url = new URL(req.url);
+    const myLeads = url.searchParams.get("myLeads") === "true";
+
+    // Build the WHERE clause
+    const where: any = {};
+
+    // Handle myLeads parameter
+    if (myLeads) {
+      where.ownerId = session.user.id;
+    } else if (session.user.role === "SALES") {
+      where.ownerId = session.user.id;
+    }
+
     // Build the WHERE clause based on user role and filters
     const whereClause: any = {};
     const searchTerm = searchParams.get("search");

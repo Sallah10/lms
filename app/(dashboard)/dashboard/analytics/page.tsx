@@ -19,6 +19,8 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
+import { ActivityLogs } from "@/components/ActivityLogs";
+import { CardHeader, CardTitle, CardContent, Card } from "@/components/ui/card";
 
 const COLORS = [
   "#3b82f6",
@@ -273,6 +275,14 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent System Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActivityLogs limit={20} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

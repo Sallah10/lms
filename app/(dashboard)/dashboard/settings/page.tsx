@@ -1,32 +1,87 @@
-'use client';
+// app/dashboard/settings/page.tsx
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SettingsPage() {
-  const [form, setForm] = useState({ name: '', email: '' });
+  const { data: session, update } = useSession();
+  const [name, setName] = useState(session?.user?.name || "");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  if (!session) {
+    return <div>Not authenticated</div>;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/user', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    alert('Profile updated!');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (res.ok) {
+        // Update the session to reflect the new name immediately
+        await update({ name });
+        alert("Profile updated successfully!");
+      } else {
+        throw new Error("Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      alert("An error occurred while updating your profile.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input name="name" placeholder="Name" className="border p-2 rounded" onChange={handleChange} />
-        <input name="email" placeholder="Email" className="border p-2 rounded" onChange={handleChange} />
-        <button type="submit" className="bg-green-500 text-white p-2 rounded">Update</button>
-      </form>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage your account settings.
+        </p>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow max-w-md">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={session.user.email || ""}
+              disabled
+            />
+            <p className="text-sm text-muted-foreground">
+              Your email cannot be changed.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              required
+            />
+          </div>
+
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
