@@ -315,7 +315,7 @@ export default function EnhancedLeadsTable({
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b bg-gray-50">

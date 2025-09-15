@@ -52,6 +52,10 @@ async function main() {
   ];
   const statuses = [
     "NEW",
+    "REVIEWED",
+    "VERIFIED",
+    "INVALID",
+    "REJECTED",
     "PROPOSAL_SENT",
     "PROPOSAL_CONFIRMED",
     "AGREED",

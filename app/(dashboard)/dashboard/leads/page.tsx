@@ -58,6 +58,13 @@ export default function LeadsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Leads</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your partner leads and track their status
+          </p>
+        </div>
+
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -75,22 +82,16 @@ export default function LeadsPage() {
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
-          <Link href="/dashboard/leads/new">
+          {/* <Link href="/dashboard/leads/new">
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Create New
             </Button>
+          </Link> */}
+          <Link href="/dashboard/leads/new">
+            <Button>Create New Lead</Button>
           </Link>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold">Leads</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your partner leads and track their status
-          </p>
-        </div>
-        <Link href="/dashboard/leads/new">
-          <Button>Create New Lead</Button>
-        </Link>
       </div>
 
       {/* Filters Card */}

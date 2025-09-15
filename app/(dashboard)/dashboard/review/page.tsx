@@ -1,4 +1,3 @@
-// app/dashboard/review/page.tsx
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,7 +5,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   CheckCircle,
@@ -16,6 +14,7 @@ import {
   Eye,
   Clock,
 } from "lucide-react";
+import { approveLead, rejectLead } from "./actions";
 
 export default async function ReviewPage() {
   const session = await getServerSession(authOptions);
@@ -26,60 +25,21 @@ export default async function ReviewPage() {
     redirect("/dashboard");
   }
 
-  // Get the status IDs we need for filtering and updating
-  const [newStatus, reviewedStatus, rejectedStatus] = await Promise.all([
-    prisma.leadStatusModel.findFirst({ where: { name: "NEW" } }),
-    prisma.leadStatusModel.findFirst({ where: { name: "REVIEWED" } }),
-    prisma.leadStatusModel.findFirst({ where: { name: "REJECTED" } }),
-  ]);
+  // Get status "NEW"
+  const newStatus = await prisma.leadStatusModel.findFirst({
+    where: { name: "NEW" },
+  });
+  if (!newStatus) throw new Error("NEW status not found");
 
-  if (!newStatus || !reviewedStatus || !rejectedStatus) {
-    throw new Error("Required lead statuses not found in database");
-  }
-
-  // Fetch leads that need review (status = NEW)
+  // Leads needing review
   const leadsToReview = await prisma.lead.findMany({
-    where: {
-      statusId: newStatus.id,
-      // For PDM (not admin), maybe only show leads from their team?
-      // ...(session.user.role === "PDM" && { /* team filter */ })
-    },
+    where: { statusId: newStatus.id },
     include: {
       owner: { select: { name: true } },
       status: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },
   });
-
-  const handleAction = async (leadId: string, action: "approve" | "reject") => {
-    "use server";
-
-    const newStatusId =
-      action === "approve" ? reviewedStatus.id : rejectedStatus.id;
-
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        statusId: newStatusId,
-        // Also update the inputedStatus field if you want to track the status as text
-        inputedStatus: action === "approve" ? "REVIEWED" : "REJECTED",
-      },
-    });
-
-    //  activity log
-    await prisma.activityLog.create({
-      data: {
-        action: "STATUS_CHANGE",
-        details: `Lead ${
-          action === "approve" ? "approved" : "rejected"
-        } in review`,
-        oldValue: "NEW",
-        newValue: action === "approve" ? "REVIEWED" : "REJECTED",
-        leadId: leadId,
-        userId: session.user.id,
-      },
-    });
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -185,7 +145,7 @@ export default async function ReviewPage() {
                               View
                             </Button>
                           </Link>
-                          <form action={() => handleAction(lead.id, "approve")}>
+                          <form action={approveLead.bind(null, lead.id)}>
                             <Button
                               type="submit"
                               size="sm"
@@ -195,7 +155,7 @@ export default async function ReviewPage() {
                               Approve
                             </Button>
                           </form>
-                          <form action={() => handleAction(lead.id, "reject")}>
+                          <form action={rejectLead.bind(null, lead.id)}>
                             <Button
                               type="submit"
                               variant="destructive"
