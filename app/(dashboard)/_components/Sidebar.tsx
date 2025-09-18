@@ -6,50 +6,72 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Role } from "@prisma/client";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home,
+  List,
+  Target,
+  Bell,
+  Eye,
+  CheckSquare,
+  Users,
+  Settings,
+  // LayoutDashboardIcon
+} from "lucide-react";
 
 // Define ALL possible navigation items
 const allNavItems = [
   {
     name: "Dashboard",
     href: "/dashboard",
-    icon: "🏠",
+    icon: <Home className="h-5 w-5" />,
     roles: ["ADMIN", "SALES", "PDM", "CUSTOMER_CARE"],
   },
   {
     name: "All Leads",
     href: "/dashboard/leads",
-    icon: "📋",
+    icon: <List className="h-5 w-5" />,
     roles: ["ADMIN", "PDM", "CUSTOMER_CARE"],
   },
   {
     name: "My Leads",
     href: "/dashboard/my-leads",
-    icon: "🎯",
+    icon: <Target className="h-5 w-5" />,
     roles: ["ADMIN", "SALES", "PDM", "CUSTOMER_CARE"],
+  },
+  {
+    icon: <Bell className="h-5 w-5" />,
+    name: "Notifications",
+    href: "/dashboard/notifications",
+    roles: ["ADMIN"], // Only show for admins
   },
   {
     name: "Review",
     href: "/dashboard/review",
-    icon: "👀",
+    icon: <Eye className="h-5 w-5" />,
     roles: ["ADMIN", "PDM"],
   },
   {
     name: "Verification",
     href: "/dashboard/verification",
-    icon: "✅",
+    icon: <CheckSquare className="h-5 w-5" />,
     roles: ["ADMIN", "CUSTOMER_CARE"],
   },
-  { name: "Users", href: "/dashboard/users", icon: "👥", roles: ["ADMIN"] },
   {
-    name: "Analytics",
-    href: "/dashboard/analytics",
-    icon: "📊",
-    roles: ["ADMIN", "PDM"],
+    name: "Users",
+    href: "/dashboard/users",
+    icon: <Users className="h-5 w-5" />,
+    roles: ["ADMIN"],
   },
+  // {
+  //   name: "Analytics",
+  //   href: "/dashboard/analytics",
+  //      icon: <LayoutDashboardIcon className="h-5 w-5" />,
+  //   roles: ["ADMIN", "PDM"],
+  // },
   {
     name: "Settings",
     href: "/dashboard/settings",
-    icon: "⚙️",
+    icon: <Settings className="h-5 w-5" />,
     roles: ["ADMIN"],
   },
 ];

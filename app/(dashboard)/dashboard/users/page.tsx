@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { userToasts } from "@/lib/toast";
+import { Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -64,6 +66,35 @@ export default function UsersPage() {
     },
   });
 
+  const deactivateUser = async (userId: string, userName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to deactivate ${userName}? They will no longer be able to login.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, isActive: false }),
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+        userToasts.deleted(userName);
+      } else {
+        const error = await response.text();
+        userToasts.error("deactivate");
+      }
+    } catch (error) {
+      console.error("Deactivate error:", error);
+      userToasts.error("deactivate");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createUserMutation.mutate(newUser);
@@ -104,6 +135,9 @@ export default function UsersPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Created
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -123,6 +157,15 @@ export default function UsersPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(user.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => deactivateUser(user.id, user.name)}
+                    className="text-red-600 hover:text-red-800"
+                    title="Deactivate User"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </td>
               </tr>
             ))}

@@ -8,45 +8,46 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  password  String
-  role      Role
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  accounts  Account[]
-  invites   Invite[]  @relation("UserInvites")
-  leads     Lead[]    @relation("LeadOwner")
-  sessions  Session[]
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isActive     Boolean       @default(true)
+  accounts     Account[]
+  invites      Invite[]      @relation("UserInvites")
+  leads        Lead[]        @relation("LeadOwner")
+  sessions     Session[]
   activityLogs ActivityLog[] @relation("UserActivityLogs")
 }
 
 model Lead {
-  id           String          @id @default(cuid())
-  name         String
-  email        String
-  phone        String?
-  source       String?
-  address      String? 
-  service      String? 
-  inputedStatus       String? 
-  nextFollowUp DateTime?
-  notes        String?
-  priority     LeadPriority    @default(MEDIUM)
-  onboarded    Boolean         @default(false)
-  followUpDate DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  ownerId      String
-  stageId      String
-  statusId     String
-  followUps    FollowUp[]
-  owner        User            @relation("LeadOwner", fields: [ownerId], references: [id])
-  stage        LeadStage       @relation(fields: [stageId], references: [id])
-  status       LeadStatusModel @relation(fields: [statusId], references: [id])
-
-  activityLogs ActivityLog[]   @relation("LeadActivityLogs") 
+  id            String          @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  source        String?
+  notes         String?
+  priority      LeadPriority    @default(MEDIUM)
+  onboarded     Boolean         @default(false)
+  followUpDate  DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  ownerId       String
+  stageId       String
+  statusId      String
+  address       String?
+  inputedStatus String?
+  nextFollowUp  DateTime?
+  service       String?
+  assets        String          @default("")
+  followUps     FollowUp[]
+  owner         User            @relation("LeadOwner", fields: [ownerId], references: [id])
+  stage         LeadStage       @relation(fields: [stageId], references: [id])
+  status        LeadStatusModel @relation(fields: [statusId], references: [id])
+  activityLogs  ActivityLog[]   @relation("LeadActivityLogs")
 }
 
 model LeadStage {
@@ -105,18 +106,16 @@ model Account {
 
 model ActivityLog {
   id        String   @id @default(cuid())
-  action    String   // e.g., "STATUS_CHANGE", "NOTE_ADDED", "LEAD_CREATED"
+  action    String
   details   String?
   oldValue  String?
   newValue  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
-  leadId   String
-  lead     Lead     @relation("LeadActivityLogs", fields: [leadId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User     @relation("UserActivityLogs", fields: [userId], references: [id], onDelete: Cascade)
+  leadId    String?
+  userId    String
+  lead      Lead?     @relation("LeadActivityLogs", fields: [leadId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserActivityLogs", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("activity_logs")
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
-import { Download, Upload, Plus } from "lucide-react";
+import { Download, Upload, Plus, RefreshCw } from "lucide-react";
 import CsvImporter from "@/app/(dashboard)/_components/CsvImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { showToast } from "@/lib/toast";
 
 export default function LeadsPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Export Function for Export files;
   const handleExport = async () => {
     try {
+      showToast.loading("Preparing export...");
       // Build query string from current filters (which are in THIS component)
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
@@ -48,11 +51,19 @@ export default function LeadsPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
+
+      showToast.success("Leads exported successfully!");
     } catch (error) {
       console.error("Export error:", error);
       alert("Failed to export leads. Please try again.");
+      showToast.error("Failed to export leads");
     }
   };
+
+  // NEW: Refresh function
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1); // This will trigger EnhancedLeadsTable to refetch
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -66,6 +77,15 @@ export default function LeadsPage() {
         </div>
 
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => setShowImportModal(true)}
@@ -139,6 +159,7 @@ export default function LeadsPage() {
 
       {/* Enhanced Leads Table */}
       <EnhancedLeadsTable
+        key={refreshKey}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
         priorityFilter={priorityFilter}
@@ -147,13 +168,7 @@ export default function LeadsPage() {
       {showImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Import Leads from CSV</h3>
-              <Button variant="ghost" onClick={() => setShowImportModal(false)}>
-                ×
-              </Button>
-            </div>
-            <CsvImporter />
+            <CsvImporter onClose={() => setShowImportModal(false)} />
           </div>
         </div>
       )}

@@ -1,8 +1,10 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// app/dashboard/review/page.tsx (CLIENT-SIDE VERSION)
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,32 +16,90 @@ import {
   Eye,
   Clock,
 } from "lucide-react";
-import { approveLead, rejectLead } from "./actions";
+import { RejectionModal } from "@/components/RejectionModal";
+import { reviewToasts, showToast } from "@/lib/toast";
 
-export default async function ReviewPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  service: string | null;
+  createdAt: string;
+  owner: { name: string | null } | null;
+  status: { name: string } | null;
+}
 
-  // Only PDM and ADMIN can access this page
-  if (session.user.role !== "PDM" && session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+export default function ReviewPage() {
+  const router = useRouter();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [rejectingLead, setRejectingLead] = useState<Lead | null>(null);
+  const [rejectionNotes, setRejectionNotes] = useState("");
 
-  // Get status "NEW"
-  const newStatus = await prisma.leadStatusModel.findFirst({
-    where: { name: "NEW" },
-  });
-  if (!newStatus) throw new Error("NEW status not found");
+  useEffect(() => {
+    fetchLeads();
+  }, []);
 
-  // Leads needing review
-  const leadsToReview = await prisma.lead.findMany({
-    where: { statusId: newStatus.id },
-    include: {
-      owner: { select: { name: true } },
-      status: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const fetchLeads = async () => {
+    try {
+      const response = await fetch("/api/leads/review");
+      if (response.ok) {
+        const data = await response.json();
+        setLeads(data.leads);
+      }
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "APPROVE" }),
+      });
+
+      if (response.ok) {
+        // Remove from UI immediately
+        setLeads(leads.filter((lead) => lead.id !== leadId));
+        // Show success message
+        // alert("Lead approved successfully!");
+        leads.map((lead) => reviewToasts.approved(lead.name));
+      }
+    } catch (error) {
+      console.error("Error approving lead:", error);
+      // alert("Failed to approve lead");
+      showToast.error("Failed to approve lead");
+    }
+  };
+
+  const handleReject = async (leadId: string, notes: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "REJECT", notes }),
+      });
+
+      if (response.ok) {
+        // Remove from UI immediately
+        setLeads(leads.filter((lead) => lead.id !== leadId));
+        setRejectingLead(null);
+        setRejectionNotes("");
+        // Show success message
+        alert("Lead rejected successfully!");
+      }
+    } catch (error) {
+      console.error("Error rejecting lead:", error);
+      alert("Failed to reject lead");
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="p-6 space-y-6">
@@ -68,7 +128,7 @@ export default async function ReviewPage() {
                 <p className="text-sm font-medium text-gray-600">
                   Leads Pending Review
                 </p>
-                <p className="text-2xl font-bold">{leadsToReview.length}</p>
+                <p className="text-2xl font-bold">{leads.length}</p>
               </div>
               <Clock className="h-8 w-8 text-blue-500" />
             </div>
@@ -82,7 +142,7 @@ export default async function ReviewPage() {
           <CardTitle>Leads Awaiting Review</CardTitle>
         </CardHeader>
         <CardContent>
-          {leadsToReview.length === 0 ? (
+          {leads.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900">
@@ -113,7 +173,7 @@ export default async function ReviewPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leadsToReview.map((lead) => (
+                  {leads.map((lead) => (
                     <tr key={lead.id} className="border-b hover:bg-gray-50">
                       <td className="p-3">
                         <div className="font-medium">{lead.name}</div>
@@ -145,26 +205,22 @@ export default async function ReviewPage() {
                               View
                             </Button>
                           </Link>
-                          <form action={approveLead.bind(null, lead.id)}>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                          </form>
-                          <form action={rejectLead.bind(null, lead.id)}>
-                            <Button
-                              type="submit"
-                              variant="destructive"
-                              size="sm"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </form>
+                          <Button
+                            onClick={() => handleApprove(lead.id)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => setRejectingLead(lead)}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -175,6 +231,18 @@ export default async function ReviewPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Rejection Modal */}
+      <RejectionModal
+        open={!!rejectingLead}
+        onClose={() => setRejectingLead(null)}
+        onConfirm={(notes: string) => {
+          if (rejectingLead) {
+            handleReject(rejectingLead.id, notes);
+          }
+        }}
+        leadName={rejectingLead?.name || ""}
+      />
     </div>
   );
 }

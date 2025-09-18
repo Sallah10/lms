@@ -385,6 +385,17 @@ export default function EnhancedLeadsTable({
               </th>
               <th
                 className="p-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("owner")}
+              >
+                <div className="flex items-center">
+                  Sales Rep
+                  <ArrowUpDown className="ml-1 h-3 w-3" />
+                  {sortField === "owner" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
+                </div>
+              </th>
+              <th
+                className="p-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("nextFollowUp")}
               >
                 <div className="flex items-center">
@@ -412,7 +423,7 @@ export default function EnhancedLeadsTable({
               )}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="w-full">
             {processedLeads.map((lead) => (
               <tr key={lead.id} className="border-b hover:bg-gray-50">
                 {showBulkActions && ( // Conditionally show checkbox cell
@@ -425,24 +436,24 @@ export default function EnhancedLeadsTable({
                 )}
                 <td className="p-3">
                   <div className="font-medium">{lead.name}</div>
-                  <div className="text-sm text-gray-500">{lead.address}</div>
+                  {/* <div className="text-sm text-gray-500">{lead.address}</div> */}
                 </td>
                 <td className="p-3">
-                  <div className="flex items-center text-sm">
+                  <div className="flex items-center text-xs">
                     <Mail className="h-3 w-3 mr-1 text-gray-400" />
                     {lead.email}
                   </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                  <div className="flex items-center text-xs text-gray-500">
+                    <Phone className="h-3 w-3 mr-1 text-gray-400 " />
                     {lead.phone || "N/A"}
                   </div>
                 </td>
-                <td className="p-3 text-sm">{lead.service || "N/A"}</td>
-                <td className="p-3 text-sm">{lead.address || "N/A"}</td>
-                <td className="p-3">
+                <td className="p-3 text-xs">{lead.service || "N/A"}</td>
+                <td className="p-3 text-xs">{lead.address || "N/A"}</td>
+                <td className="p-3 text-xs">
                   <Badge variant="outline">{lead.source || "N/A"}</Badge>
                 </td>
-                <td className="p-3">
+                <td className="p-3 text-xs">
                   <Badge
                     className={
                       lead.priority === "HIGH"
@@ -455,7 +466,7 @@ export default function EnhancedLeadsTable({
                     {lead.priority}
                   </Badge>
                 </td>
-                <td className="p-3">
+                <td className="p-3 text-xs">
                   <Badge
                     className={
                       lead.status.name === "NEW"
@@ -479,6 +490,9 @@ export default function EnhancedLeadsTable({
                   >
                     {lead.status.name}
                   </Badge>
+                </td>
+                <td className="p-3 text-sm">
+                  {lead.owner?.name || "Unassigned"}
                 </td>
                 <td className="p-3 text-sm">
                   {lead.nextFollowUp ? (

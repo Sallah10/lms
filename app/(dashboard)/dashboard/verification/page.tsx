@@ -1,9 +1,8 @@
-// app/dashboard/verification/page.tsx - FIXED VERSION
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,72 +15,88 @@ import {
   Eye,
   Clock,
 } from "lucide-react";
+import { RejectionModal } from "@/components/RejectionModal";
 
-export default async function VerificationPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  service: string | null;
+  priority: string;
+  createdAt: string;
+  owner: { name: string | null } | null;
+  status: { name: string } | null;
+}
 
-  // Only CUSTOMER_CARE and ADMIN can access this page
-  if (session.user.role !== "CUSTOMER_CARE" && session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+export default function VerificationPage() {
+  const router = useRouter();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [rejectingLead, setRejectingLead] = useState<Lead | null>(null);
+  const [rejectionNotes, setRejectionNotes] = useState("");
 
-  // Get the status IDs we need for filtering and updating
-  const [reviewedStatus, verifiedStatus, invalidStatus] = await Promise.all([
-    prisma.leadStatusModel.findFirst({ where: { name: "REVIEWED" } }),
-    prisma.leadStatusModel.findFirst({ where: { name: "VERIFIED" } }),
-    prisma.leadStatusModel.findFirst({ where: { name: "INVALID" } }),
-  ]);
+  useEffect(() => {
+    fetchLeads();
+  }, []);
 
-  if (!reviewedStatus || !verifiedStatus || !invalidStatus) {
-    throw new Error("Required lead statuses not found in database");
-  }
-
-  // Fetch leads that need verification (status = REVIEWED)
-  const leadsToVerify = await prisma.lead.findMany({
-    where: {
-      statusId: reviewedStatus.id,
-    },
-    include: {
-      owner: { select: { name: true } },
-      status: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const handleAction = async (
-    leadId: string,
-    action: "verify" | "invalidate"
-  ) => {
-    "use server";
-
-    // Determine the new status ID based on the action
-    const newStatusId =
-      action === "verify" ? verifiedStatus.id : invalidStatus.id;
-    const newStatusName = action === "verify" ? "VERIFIED" : "INVALID";
-
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        statusId: newStatusId,
-        inputedStatus: newStatusName,
-      },
-    });
-
-    // Add activity log
-    await prisma.activityLog.create({
-      data: {
-        action: "STATUS_CHANGE",
-        details: `Lead ${
-          action === "verify" ? "verified" : "marked as invalid"
-        }`,
-        oldValue: "REVIEWED",
-        newValue: newStatusName,
-        leadId: leadId,
-        userId: session.user.id,
-      },
-    });
+  const fetchLeads = async () => {
+    try {
+      const response = await fetch("/api/leads/verification");
+      if (response.ok) {
+        const data = await response.json();
+        setLeads(data.leads);
+      }
+    } catch (error) {
+      console.error("Error fetching verification leads:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleVerify = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "VERIFY" }),
+      });
+
+      if (response.ok) {
+        // Remove from UI immediately
+        setLeads(leads.filter((lead) => lead.id !== leadId));
+        // Show success message
+        alert("Lead verified successfully!");
+      }
+    } catch (error) {
+      console.error("Error verifying lead:", error);
+      alert("Failed to verify lead");
+    }
+  };
+
+  const handleInvalidate = async (leadId: string, notes: string) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "INVALIDATE", notes }),
+      });
+
+      if (response.ok) {
+        // Remove from UI immediately
+        setLeads(leads.filter((lead) => lead.id !== leadId));
+        setRejectingLead(null);
+        setRejectionNotes("");
+        // Show success message
+        alert("Lead marked as invalid successfully!");
+      }
+    } catch (error) {
+      console.error("Error invalidating lead:", error);
+      alert("Failed to mark lead as invalid");
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="p-6 space-y-6">
@@ -110,7 +125,7 @@ export default async function VerificationPage() {
                 <p className="text-sm font-medium text-gray-600">
                   Leads Pending Verification
                 </p>
-                <p className="text-2xl font-bold">{leadsToVerify.length}</p>
+                <p className="text-2xl font-bold">{leads.length}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-500" />
             </div>
@@ -124,7 +139,7 @@ export default async function VerificationPage() {
           <CardTitle>Leads Awaiting Verification</CardTitle>
         </CardHeader>
         <CardContent>
-          {leadsToVerify.length === 0 ? (
+          {leads.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900">
@@ -158,7 +173,7 @@ export default async function VerificationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leadsToVerify.map((lead) => (
+                  {leads.map((lead) => (
                     <tr key={lead.id} className="border-b hover:bg-gray-50">
                       <td className="p-3">
                         <div className="font-medium">{lead.name}</div>
@@ -205,28 +220,22 @@ export default async function VerificationPage() {
                               View
                             </Button>
                           </Link>
-                          <form action={() => handleAction(lead.id, "verify")}>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Verify
-                            </Button>
-                          </form>
-                          <form
-                            action={() => handleAction(lead.id, "invalidate")}
+                          <Button
+                            onClick={() => handleVerify(lead.id)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
                           >
-                            <Button
-                              type="submit"
-                              variant="destructive"
-                              size="sm"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Invalid
-                            </Button>
-                          </form>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Verify
+                          </Button>
+                          <Button
+                            onClick={() => setRejectingLead(lead)}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Invalid
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -237,6 +246,21 @@ export default async function VerificationPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Rejection/Invalidation Modal */}
+      <RejectionModal
+        open={!!rejectingLead}
+        onClose={() => setRejectingLead(null)}
+        onConfirm={(notes) => {
+          if (rejectingLead) {
+            handleInvalidate(rejectingLead.id, notes);
+          }
+        }}
+        leadName={rejectingLead?.name || ""}
+        title="Mark as Invalid"
+        description="Please provide reasons for marking this lead as invalid. This feedback will be visible to the sales representative."
+        confirmButtonText="Confirm Invalidation"
+      />
     </div>
   );
 }

@@ -1,86 +1,50 @@
-/*
-  Warnings:
-
-  - You are about to drop the column `company` on the `Lead` table. All the data in the column will be lost.
-  - You are about to drop the column `reviewedById` on the `Lead` table. All the data in the column will be lost.
-  - You are about to drop the column `salesId` on the `Lead` table. All the data in the column will be lost.
-  - You are about to drop the column `status` on the `Lead` table. All the data in the column will be lost.
-  - You are about to drop the column `validatedById` on the `Lead` table. All the data in the column will be lost.
-  - You are about to drop the column `isActive` on the `User` table. All the data in the column will be lost.
-  - You are about to drop the column `phoneNumber` on the `User` table. All the data in the column will be lost.
-  - You are about to drop the `ActionHistory` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Notification` table. If the table is not empty, all the data it contains will be lost.
-  - Added the required column `ownerId` to the `Lead` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `stageId` to the `Lead` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `statusId` to the `Lead` table without a default value. This is not possible if the table is not empty.
-  - Made the column `email` on table `Lead` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `password` on table `User` required. This step will fail if there are existing NULL values in that column.
-
-*/
 -- CreateEnum
 CREATE TYPE "public"."LeadPriority" AS ENUM ('HIGH', 'MEDIUM', 'LOW');
 
 -- CreateEnum
+CREATE TYPE "public"."Role" AS ENUM ('USER', 'ADMIN', 'SALES', 'PDM', 'CUSTOMER_CARE', 'VIEWER');
+
+-- CreateEnum
 CREATE TYPE "public"."InviteStatus" AS ENUM ('PENDING', 'ACCEPTED', 'EXPIRED');
 
--- AlterEnum
--- This migration adds more than one value to an enum.
--- With PostgreSQL versions 11 and earlier, this is not possible
--- in a single migration. This can be worked around by creating
--- multiple migrations, each migration adding only one value to
--- the enum.
+-- CreateTable
+CREATE TABLE "public"."User" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "role" "public"."Role" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
 
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
 
-ALTER TYPE "public"."Role" ADD VALUE 'USER';
-ALTER TYPE "public"."Role" ADD VALUE 'VIEWER';
+-- CreateTable
+CREATE TABLE "public"."Lead" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT,
+    "source" TEXT,
+    "notes" TEXT,
+    "priority" "public"."LeadPriority" NOT NULL DEFAULT 'MEDIUM',
+    "onboarded" BOOLEAN NOT NULL DEFAULT false,
+    "followUpDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "ownerId" TEXT NOT NULL,
+    "stageId" TEXT NOT NULL,
+    "statusId" TEXT NOT NULL,
+    "address" TEXT,
+    "inputedStatus" TEXT,
+    "nextFollowUp" TIMESTAMP(3),
+    "service" TEXT,
+    "assets" TEXT NOT NULL DEFAULT '',
 
--- DropForeignKey
-ALTER TABLE "public"."ActionHistory" DROP CONSTRAINT "ActionHistory_leadId_fkey";
-
--- DropForeignKey
-ALTER TABLE "public"."ActionHistory" DROP CONSTRAINT "ActionHistory_performedById_fkey";
-
--- DropForeignKey
-ALTER TABLE "public"."Lead" DROP CONSTRAINT "Lead_reviewedById_fkey";
-
--- DropForeignKey
-ALTER TABLE "public"."Lead" DROP CONSTRAINT "Lead_salesId_fkey";
-
--- DropForeignKey
-ALTER TABLE "public"."Lead" DROP CONSTRAINT "Lead_validatedById_fkey";
-
--- DropForeignKey
-ALTER TABLE "public"."Notification" DROP CONSTRAINT "Notification_userId_fkey";
-
--- AlterTable
-ALTER TABLE "public"."Lead" DROP COLUMN "company",
-DROP COLUMN "reviewedById",
-DROP COLUMN "salesId",
-DROP COLUMN "status",
-DROP COLUMN "validatedById",
-ADD COLUMN     "followUpDate" TIMESTAMP(3),
-ADD COLUMN     "onboarded" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "ownerId" TEXT NOT NULL,
-ADD COLUMN     "priority" "public"."LeadPriority" NOT NULL DEFAULT 'MEDIUM',
-ADD COLUMN     "source" TEXT,
-ADD COLUMN     "stageId" TEXT NOT NULL,
-ADD COLUMN     "statusId" TEXT NOT NULL,
-ALTER COLUMN "email" SET NOT NULL;
-
--- AlterTable
-ALTER TABLE "public"."User" DROP COLUMN "isActive",
-DROP COLUMN "phoneNumber",
-ALTER COLUMN "password" SET NOT NULL,
-ALTER COLUMN "role" SET DEFAULT 'USER';
-
--- DropTable
-DROP TABLE "public"."ActionHistory";
-
--- DropTable
-DROP TABLE "public"."Notification";
-
--- DropEnum
-DROP TYPE "public"."LeadStatus";
+    CONSTRAINT "Lead_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "public"."LeadStage" (
@@ -145,6 +109,21 @@ CREATE TABLE "public"."Account" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."activity_logs" (
+    "id" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "details" TEXT,
+    "oldValue" TEXT,
+    "newValue" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "leadId" TEXT,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "activity_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."Session" (
     "id" TEXT NOT NULL,
     "sessionToken" TEXT NOT NULL,
@@ -160,6 +139,9 @@ CREATE TABLE "public"."VerificationToken" (
     "token" TEXT NOT NULL,
     "expires" TIMESTAMP(3) NOT NULL
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "LeadStage_name_key" ON "public"."LeadStage"("name");
@@ -199,6 +181,12 @@ ALTER TABLE "public"."Invite" ADD CONSTRAINT "Invite_invitedById_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "public"."Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."activity_logs" ADD CONSTRAINT "activity_logs_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "public"."Lead"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."activity_logs" ADD CONSTRAINT "activity_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

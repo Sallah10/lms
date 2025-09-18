@@ -21,6 +21,7 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const myLeads = url.searchParams.get("myLeads") === "true";
+    const includeService = url.searchParams.get("includeService") === "true";
 
     // Build the WHERE clause
     const where: any = {};

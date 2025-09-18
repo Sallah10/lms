@@ -68,6 +68,11 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
+    async redirect({ url, baseUrl }) {
+      // Don’t redirect API calls
+      if (url.startsWith("/api")) return baseUrl;
+      return url;
+    },
   },
 
   secret: process.env.NEXTAUTH_SECRET,

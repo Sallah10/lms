@@ -34,16 +34,17 @@ export default function LoginPage() {
       email,
       password,
       callbackUrl: "/dashboard",
-      redirect: false,
+      redirect: true,
     });
 
     setLoading(false);
 
     if (result?.error) {
       setError("Invalid email or password. Please try again.");
-    } else if (result?.ok) {
-      window.location.href = "/dashboard";
     }
+    // else if (result?.ok) {
+    //   window.location.href = "/dashboard";
+    // }
   };
 
   const handleGoogleLogin = () => {

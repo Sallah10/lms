@@ -5,6 +5,82 @@ import { Role } from "@prisma/client";
 
 const EXPECTED_API_KEY = process.env.INTERNAL_API_KEY;
 
+function validateApiKey(req: Request) {
+  const apiKey = req.headers.get("x-api-key");
+  if (apiKey !== EXPECTED_API_KEY) {
+    return NextResponse.json({ error: "Invalid API Key" }, { status: 401 });
+  }
+  return null;
+}
+
+// ... imports and validateApiKey function ...
+
+export async function GET(req: Request) {
+  const authError = validateApiKey(req);
+  if (authError) return authError;
+
+  try {
+    const url = new URL(req.url);
+    const userId = url.searchParams.get("userId");
+    const userEmail = url.searchParams.get("userEmail"); // <- NEW PARAMETER
+
+    if (!userId && !userEmail) {
+      return NextResponse.json(
+        { error: "User ID or User Email is required" },
+        { status: 400 }
+      );
+    }
+
+    // 1. Try to find the user in the Internal System's DB
+    let internalUser = null;
+    if (userId) {
+      internalUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+    }
+
+    // 2. FALLBACK: If user not found by ID, try to find by email (if provided)
+    if (!internalUser && userEmail) {
+      internalUser = await prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+      console.log("Resolved user by email in GET endpoint:", internalUser?.id);
+    }
+
+    // 3. If still no user found, return empty array or error
+    if (!internalUser) {
+      // You can choose to return an error or just an empty list.
+      // Returning an empty list is often safer for the UI.
+      console.warn(
+        `No internal user found for ID:${userId} or Email:${userEmail}. Returning empty leads.`
+      );
+      return NextResponse.json({ leads: [] });
+    }
+
+    // 4. Fetch leads for the found user ID
+    const leads = await prisma.lead.findMany({
+      where: { ownerId: internalUser.id }, // Use the INTERNAL user's ID
+      include: {
+        owner: { select: { id: true, name: true, email: true } },
+        status: { select: { id: true, name: true } },
+        stage: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    console.log(
+      `Found ${leads.length} leads for internal user ${internalUser.id}`
+    );
+    return NextResponse.json({ leads });
+  } catch (error) {
+    console.error("External Lead API GET Error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
   const apiKey = req.headers.get("x-api-key");
 
@@ -26,6 +102,9 @@ export async function POST(req: Request) {
       source,
       notes,
       address,
+      service,
+      priority,
+      assets,
       salesUserId,
       salesUserEmail,
     } = body;
@@ -93,7 +172,9 @@ export async function POST(req: Request) {
         source: source || "External Portal",
         notes: notes || "",
         address: address || "", // ADDED ADDRESS FIELD
-        priority: "MEDIUM",
+        priority: priority || "MEDIUM",
+        service: service || "",
+        assets: assets || "",
         ownerId: salesUser.id, // Use the resolved user's ID
         stageId: newStage.id,
         statusId: newStatus.id,

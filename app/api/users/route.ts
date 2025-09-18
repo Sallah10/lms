@@ -6,6 +6,46 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== Role.ADMIN) {
+      return new NextResponse("Forbidden: Admins only", { status: 403 });
+    }
+
+    const body = await req.json();
+    const { userId, isActive } = body;
+
+    if (!userId || typeof isActive !== "boolean") {
+      return new NextResponse("User ID and isActive are required", { status: 400 });
+    }
+
+    // Prevent self-deactivation
+    if (userId === session.user.id && !isActive) {
+      return new NextResponse("Cannot deactivate your own account", { status: 400 });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("User update error:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -16,6 +56,7 @@ export async function GET() {
     }
 
     const users = await prisma.user.findMany({
+       where: { isActive: true },
       select: {
         id: true,
         name: true,
