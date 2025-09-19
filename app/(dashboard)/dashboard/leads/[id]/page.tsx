@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   Edit,
-  Trash2,
   Mail,
   Phone,
   MapPin,
@@ -28,11 +27,13 @@ interface PageProps {
 }
 
 export default async function LeadDetailPage({ params }: PageProps) {
+  const { id: leadId } = await params;
+
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
   const lead = await prisma.lead.findUnique({
-    where: { id: params.id },
+    where: { id: leadId },
     include: {
       owner: { select: { id: true, name: true, email: true } },
       stage: { select: { name: true } },
@@ -62,10 +63,10 @@ export default async function LeadDetailPage({ params }: PageProps) {
     (session.user.role === "SALES" && lead.ownerId === session.user.id);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-6 py-2 space-y-6">
       {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row items-center gap-4">
           <Link href="/dashboard/leads">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -80,13 +81,13 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
         {canEdit && (
           <div className="flex gap-2">
-            <Link href={`/dashboard/leads/${lead.id}/edit`}>
+            <Link href={`/dashboard/leads/${leadId}/edit`}>
               <Button variant="outline" size="sm">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Lead
               </Button>
             </Link>
-            <DeleteLeadButton leadId={lead.id} leadName={lead.name} />
+            <DeleteLeadButton leadId={leadId} leadName={lead.name} />
           </div>
         )}
       </div>
@@ -270,15 +271,15 @@ export default async function LeadDetailPage({ params }: PageProps) {
               )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ActivityLogs leadId={params.id} />
-            </CardContent>
-          </Card>
         </div>
+        <Card className="md:w-[400px]">
+          <CardHeader>
+            <CardTitle>Activity History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActivityLogs leadId={leadId} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

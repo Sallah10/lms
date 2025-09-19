@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { parse } from "csv-parse/sync";
 import { Role } from "@prisma/client";
 
-interface CsvRecord {
+type CsvRecord = Record<string, string> & {
   name?: string;
   email?: string;
   phone?: string;
@@ -15,7 +15,7 @@ interface CsvRecord {
   notes?: string;
   priority?: string;
   nextFollowUp?: string;
-}
+};
 
 interface ValidLead {
   name: string;
@@ -28,6 +28,68 @@ interface ValidLead {
   priority: string;
   nextFollowUp?: string;
   salesRepId: string;
+}
+
+function normalizeCsvRecord(record: Record<string, string>): CsvRecord {
+  const normalized: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(record)) {
+    const lowerKey = key.toLowerCase().trim();
+
+    // Map various column names to standard fields
+    if (
+      lowerKey.includes("name") ||
+      lowerKey.includes("company") ||
+      lowerKey.includes("partner")
+    ) {
+      normalized.name = value;
+    } else if (lowerKey.includes("email") || lowerKey.includes("mail")) {
+      normalized.email = value;
+    } else if (
+      lowerKey.includes("phone") ||
+      lowerKey.includes("tel") ||
+      lowerKey.includes("mobile")
+    ) {
+      normalized.phone = value;
+    } else if (
+      lowerKey.includes("address") ||
+      lowerKey.includes("location") ||
+      lowerKey.includes("addr")
+    ) {
+      normalized.address = value;
+    } else if (
+      lowerKey.includes("service") ||
+      lowerKey.includes("product") ||
+      lowerKey.includes("module")
+    ) {
+      normalized.service = value;
+    } else if (
+      lowerKey.includes("source") ||
+      lowerKey.includes("origin") ||
+      lowerKey.includes("referral")
+    ) {
+      normalized.source = value;
+    } else if (
+      lowerKey.includes("note") ||
+      lowerKey.includes("comment") ||
+      lowerKey.includes("remark")
+    ) {
+      normalized.notes = value;
+    } else if (lowerKey.includes("priority") || lowerKey.includes("urgent")) {
+      normalized.priority = value;
+    } else if (
+      lowerKey.includes("follow") ||
+      lowerKey.includes("next") ||
+      lowerKey.includes("date")
+    ) {
+      normalized.nextFollowUp = value;
+    } else {
+      // Keep original key for unknown fields
+      normalized[key] = value;
+    }
+  }
+
+  return normalized as CsvRecord;
 }
 
 export async function POST(req: NextRequest) {
@@ -93,8 +155,10 @@ export async function POST(req: NextRequest) {
     }> = [];
 
     for (let i = 0; i < records.length; i++) {
-      const record = records[i];
+      const rawRecord = records[i];
       const rowNumber = i + 2; // +2 because of header row and 0-based index
+
+      const record = normalizeCsvRecord(rawRecord);
 
       // Check required fields
       if (!record.name) {

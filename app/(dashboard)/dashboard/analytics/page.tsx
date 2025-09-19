@@ -15,8 +15,8 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
+  // LineChart,
+  // Line,
   CartesianGrid,
 } from "recharts";
 import { ActivityLogs } from "@/components/ActivityLogs";
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
         {/* Left: Charts */}
         <div className="space-y-4">
           <div className="bg-white rounded shadow p-4">
-            <h3 className="font-semibold mb-2">Leads by Stage</h3>
+            <h3 className="font-semibold mb-2">Leads by Status</h3>
             <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stageData}>
@@ -178,7 +178,10 @@ export default function AnalyticsPage() {
                   return (
                     <Link
                       key={p.priority}
-                      href={`/dashboard/leads?priority=${p.priority}`}
+                      href={{
+                        pathname: "/dashboard/leads",
+                        query: { priority: p.priority },
+                      }}
                       className="flex justify-between"
                     >
                       <span className={`font-medium ${color}`}>

@@ -148,7 +148,7 @@ export default function Sidebar() {
         animate={
           isMobile ? { x: isOpen ? 0 : -300 } : { x: 0 } // always visible on desktop
         }
-        transition={{ type: "spring", damping: 25 }}
+        transition={{ type: "spring", damping: 20 }}
         className={`${
           isCollapsed ? "w-16" : "w-64"
         } bg-white shadow-md p-4 z-50 lg:static fixed inset-y-0 left-0 flex flex-col transition-all duration-300`}

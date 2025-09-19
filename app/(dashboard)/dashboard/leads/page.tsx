@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
-import { Download, Upload, Plus, RefreshCw } from "lucide-react";
+import { Download, Upload, RefreshCw } from "lucide-react";
 import CsvImporter from "@/app/(dashboard)/_components/CsvImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ export default function LeadsPage() {
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
 
+      showToast.dismiss();
       showToast.success("Leads exported successfully!");
     } catch (error) {
       console.error("Export error:", error);
@@ -77,40 +78,44 @@ export default function LeadsPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex flex-col gap-2 md:flex-row">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-          {/* <Link href="/dashboard/leads/new">
+            <Button
+              variant="outline"
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Import CSV
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 md:flex-row">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            {/* <Link href="/dashboard/leads/new">
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Create New
             </Button>
           </Link> */}
-          <Link href="/dashboard/leads/new">
-            <Button>Create New Lead</Button>
-          </Link>
+            <Link href="/dashboard/leads/new">
+              <Button>Create New Lead</Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -160,6 +165,7 @@ export default function LeadsPage() {
       {/* Enhanced Leads Table */}
       <EnhancedLeadsTable
         key={refreshKey}
+        refreshKey={refreshKey}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
         priorityFilter={priorityFilter}

@@ -16,15 +16,20 @@ export async function GET(req: Request) {
     const userId = searchParams.get("userId");
     const limit = Math.min(Number(searchParams.get("limit") || "10"), 100);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
+    const where: {
+      leadId?: string;
+      userId?: string;
+    } = {};
+
     if (leadId) where.leadId = leadId;
+
     if (userId) where.userId = userId;
 
     const logs = await prisma.activityLog.findMany({
       where,
       include: {
         user: { select: { name: true } },
+        lead: { select: { name: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
       take: limit,

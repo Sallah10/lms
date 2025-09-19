@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,24 +26,37 @@ interface Lead {
   service?: string;
   source?: string;
   priority: "LOW" | "MEDIUM" | "HIGH";
-  status: string;
+  status: { id: string; name: string };
   notes?: string;
   nextFollowUp?: string;
 }
 
-export default function EditLeadPage({ params }: { params: { id: string } }) {
+interface LeadStatus {
+  id: string;
+  name: string;
+}
+
+// { params }: { params: { id: string } }
+export default function EditLeadPage() {
   const router = useRouter();
+  const params = useParams(); // Get the params object using the hook
+  const leadId = params.id as string;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [lead, setLead] = useState<Lead | null>(null);
+  const [statuses, setStatuses] = useState<LeadStatus[]>([]);
 
   useEffect(() => {
+    if (!leadId) return;
     const fetchLead = async () => {
       try {
-        const response = await fetch(`/api/leads/${params.id}`);
+        const response = await fetch(`/api/leads/${leadId}`);
+        const data = await response.json();
         if (response.ok) {
-          const data = await response.json();
           setLead(data.lead);
+          setStatuses(data.statuses);
+        } else {
+          console.error("Failed to fetch lead data:", data.error);
         }
       } catch (error) {
         console.error("Error fetching lead:", error);
@@ -53,7 +66,7 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
     };
 
     fetchLead();
-  }, [params.id]);
+  }, [leadId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,14 +74,14 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/leads/${params.id}`, {
+      const response = await fetch(`/api/leads/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(lead),
       });
 
       if (response.ok) {
-        router.push(`/dashboard/leads/${params.id}`);
+        router.push(`/dashboard/leads/${leadId}`);
         router.refresh();
       } else {
         throw new Error("Failed to update lead");
@@ -184,10 +197,26 @@ export default function EditLeadPage({ params }: { params: { id: string } }) {
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
-                <Input
-                  value={lead.status}
-                  onChange={(e) => setLead({ ...lead, status: e.target.value })}
-                />
+                <Select
+                  value={lead.status.id}
+                  onValueChange={(value: string) => {
+                    const selectedStatus = statuses.find((s) => s.id === value);
+                    if (selectedStatus) {
+                      setLead({ ...lead, status: selectedStatus });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

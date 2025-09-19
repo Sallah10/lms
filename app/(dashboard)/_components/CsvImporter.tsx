@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 // components/CsvImporter.tsx
 "use client";
 
@@ -93,7 +94,7 @@ export default function CsvImporter({ onClose }: { onClose: () => void }) {
   };
 
   const downloadTemplate = () => {
-    const template = `name,email,phone,address,service,source,priority,notes,nextFollowUp
+    const template = `Partners Name,Email Address,Phone Number,Business Address,Service Type,Lead Source,Priority Level,Additional Notes,Next Follow-up Date
 Acme Inc,acme@example.com,+1234567890,123 Business Rd,Chat with a doctor,Website,HIGH,Interested in healthcare,2024-01-15
 Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referral,MEDIUM,Looking for partnership,2024-01-20`;
 
@@ -255,28 +256,41 @@ Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referra
       </div>
 
       <div className="bg-blue-50 p-4 rounded-lg">
-        <h4 className="font-medium text-blue-900 mb-2">
-          CSV Format Requirements:
-        </h4>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>
-            • <strong>Required columns:</strong> name, email
-          </li>
-          <li>
-            • <strong>Optional columns:</strong> phone, address, service,
-            source, notes
-          </li>
-          <li>
-            • <strong>Priority values:</strong> HIGH, MEDIUM, LOW
-          </li>
-          <li>
-            • <strong>Date format:</strong> YYYY-MM-DD or MM/DD/YYYY
-          </li>
-          <li>
-            • <strong>Max file size:</strong> 10MB
-          </li>
-          <li>• Duplicate emails will be detected and flagged</li>
-        </ul>
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h4 className="font-medium text-blue-900 mb-2">
+            CSV Format Requirements: (Flexible Column Names)
+          </h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>
+              • <strong>Name columns:</strong> "Name", "Company", "Partners
+              Name", "Business Name&quot;
+            </li>
+            <li>
+              • <strong>Email columns:</strong> "Email", "Email Address", "Mail"
+            </li>
+            <li>
+              • <strong>Phone columns:</strong> "Phone", "Phone Number",
+              "Telephone", "Mobile"
+            </li>
+            <li>
+              • <strong>Address columns:</strong> "Address", "Business Address",
+              "Location"
+            </li>
+            <li>
+              • <strong>Required:</strong> Some form of Name and Email fields
+            </li>
+            <li>
+              • <strong>Priority values:</strong> HIGH, MEDIUM, LOW
+            </li>
+            <li>
+              • <strong>Date format:</strong> YYYY-MM-DD or MM/DD/YYYY
+            </li>
+            <li>
+              • <strong>Max file size:</strong> 10MB
+            </li>
+            <li>• Duplicate emails will be detected and flagged</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

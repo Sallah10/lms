@@ -1,9 +1,9 @@
 // app/dashboard/my-leads/page.tsx (Internal System)
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
-import { useQueryClient } from "@tanstack/react-query"; // ADD THIS IMPORT
+// import { useQueryClient } from "@tanstack/react-query"; // ADD THIS IMPORT
 import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
 import { Download, Plus, ArrowLeft, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,8 @@ export default function MyLeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Custom fetch function for user's own leads
   async function fetchMyLeads() {
@@ -30,9 +31,9 @@ export default function MyLeadsPage() {
     return res.json();
   }
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-  };
+  // const handleRefresh = () => {
+  //   queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+  // };
 
   const handleExport = async () => {
     try {
@@ -63,6 +64,10 @@ export default function MyLeadsPage() {
       alert("Failed to export leads. Please try again.");
     }
   };
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1); // This will trigger EnhancedLeadsTable to refetch
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -174,6 +179,8 @@ export default function MyLeadsPage() {
 
       {/* Enhanced Leads Table - Only shows user's leads */}
       <EnhancedLeadsTable
+        key={refreshKey}
+        refreshKey={refreshKey}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
         priorityFilter={priorityFilter}

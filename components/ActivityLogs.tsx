@@ -13,6 +13,10 @@ interface ActivityLog {
   user: {
     name: string | null;
   };
+  lead: {
+    name: string | null;
+    email: string | null;
+  } | null;
 }
 
 interface ActivityLogsProps {
@@ -64,6 +68,50 @@ export function ActivityLogs({
           {logs.map((log) => (
             <div key={log.id} className="border-l-4 border-blue-500 pl-4 py-2">
               <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium">{log.action}</p>
+                    <span className="text-xs text-gray-500">
+                      by {log.user.name}
+                    </span>
+                  </div>
+
+                  {/* SHOW LEAD INFORMATION IF AVAILABLE */}
+                  {log.lead && (
+                    <p className="text-sm text-gray-600 mb-1">
+                      Lead: <strong>{log.lead.name}</strong> ({log.lead.email})
+                    </p>
+                  )}
+
+                  {log.details && (
+                    <p className="text-sm text-gray-700">{log.details}</p>
+                  )}
+
+                  {log.oldValue && log.newValue && (
+                    <p className="text-sm text-gray-600">
+                      Changed from{" "}
+                      <span className="font-medium">{log.oldValue}</span>
+                      to <span className="font-medium">{log.newValue}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="text-right text-sm text-gray-500 whitespace-nowrap">
+                  <p>{new Date(log.createdAt).toLocaleDateString()}</p>
+                  <p>{new Date(log.createdAt).toLocaleTimeString()}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+{
+  /* {logs.map((log) => (
+            <div key={log.id} className="border-l-4 border-blue-500 pl-4 py-2">
+              <div className="flex justify-between items-start">
                 <div>
                   <p className="font-medium">{log.action}</p>
                   {log.details && <p className="text-sm">{log.details}</p>}
@@ -82,9 +130,5 @@ export function ActivityLogs({
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+          ))} */
 }

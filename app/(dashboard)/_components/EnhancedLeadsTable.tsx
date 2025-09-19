@@ -2,7 +2,7 @@
 // app/(dashboard)/_components/EnhancedLeadsTable.tsx - FIXED VERSION
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react"; // ADD THIS IMPORT
 import Link from "next/link";
@@ -24,6 +24,7 @@ import {
   ArrowUpDown,
   Trash2, // ADD FOR DELETE ACTION
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 interface Owner {
   id: string;
@@ -70,6 +71,7 @@ interface EnhancedLeadsTableProps {
   showBulkActions?: boolean;
   fetchFunction?: () => Promise<LeadsResponse>;
   queryKey?: string[];
+  refreshKey?: number;
 }
 
 export default function EnhancedLeadsTable({
@@ -81,17 +83,26 @@ export default function EnhancedLeadsTable({
   showBulkActions = true,
   fetchFunction = fetchLeads,
   queryKey = ["leads"],
+  refreshKey = 0,
 }: EnhancedLeadsTableProps) {
   const queryClient = useQueryClient();
   const { data: session } = useSession(); // GET SESSION
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const searchParams = useSearchParams();
+  const urlPriority = searchParams.get("priority");
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKey, // USE THE PASSED QUERY KEY
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [...queryKey, refreshKey], // USE THE PASSED QUERY KEY
     queryFn: fetchFunction, // USE THE PASSED FETCH FUNCTION
   });
+
+  useEffect(() => {
+    if (refreshKey) {
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -182,7 +193,9 @@ export default function EnhancedLeadsTable({
       const matchesStatus =
         statusFilter === "all" || lead.status.name === statusFilter;
       const matchesPriority =
-        priorityFilter === "all" || lead.priority === priorityFilter;
+        priorityFilter === "all" ||
+        lead.priority === priorityFilter ||
+        (urlPriority && lead.priority === urlPriority);
 
       // FIXED: Use lead.owner?.id instead of lead.ownerId
       const matchesAssigned =
@@ -242,6 +255,7 @@ export default function EnhancedLeadsTable({
     sortField,
     sortDirection,
     session?.user?.id, // ADD SESSION DEPENDENCY
+    urlPriority,
   ]);
 
   if (isLoading)

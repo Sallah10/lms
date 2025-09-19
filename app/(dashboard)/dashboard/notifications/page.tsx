@@ -76,7 +76,7 @@ export default async function NotificationsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row items-center gap-4">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
