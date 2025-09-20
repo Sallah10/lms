@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // app/api/leads/[id]/notes/route.ts (Internal System)
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -6,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +16,7 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const leadId = params.id;
+    const leadId = (await params).id;
     const { notes, userId } = await req.json();
 
     // Verify the user has access to this lead

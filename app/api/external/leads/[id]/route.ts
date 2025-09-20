@@ -14,13 +14,13 @@ function validateApiKey(req: NextRequest) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authError = validateApiKey(req);
   if (authError) return authError;
 
   try {
-    const leadId = params.id;
+    const leadId = (await params).id;
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
     const userEmail = searchParams.get("userEmail");
@@ -79,13 +79,13 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authError = validateApiKey(req);
   if (authError) return authError;
 
   try {
-    const leadId = params.id;
+    const leadId = (await params).id;
     const body = await req.json();
     const {
       phone,

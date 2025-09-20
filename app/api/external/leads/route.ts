@@ -46,7 +46,7 @@ export async function GET(req: Request) {
       internalUser = await prisma.user.findUnique({
         where: { email: userEmail },
       });
-      console.log("Resolved user by email in GET endpoint:", internalUser?.id);
+      // console.log("Resolved user by email in GET endpoint:", internalUser?.id);
     }
 
     // 3. If still no user found, return empty array or error
@@ -70,9 +70,9 @@ export async function GET(req: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    console.log(
-      `Found ${leads.length} leads for internal user ${internalUser.id}`
-    );
+    // console.log(
+    //   `Found ${leads.length} leads for internal user ${internalUser.id}`
+    // );
     return NextResponse.json({ leads });
   } catch (error) {
     console.error("External Lead API GET Error:", error);
@@ -90,11 +90,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid API Key" }, { status: 401 });
   }
 
-  console.log("External lead API called");
+  // console.log("External lead API called");
 
   try {
     const body = await req.json();
-    console.log("Incoming body:", body);
+    // console.log("Incoming body:", body);
 
     // DESTRUCTURE salesUserEmail FROM THE BODY
     const {
@@ -140,9 +140,9 @@ export async function POST(req: Request) {
       salesUser = await prisma.user.findFirst({
         where: { email: salesUserEmail, role: Role.SALES },
       });
-      if (salesUser) {
-        console.log("Resolved sales user by email =>", salesUser.id);
-      }
+      // if (salesUser) {
+      //   console.log("Resolved sales user by email =>", salesUser.id);
+      // }
     }
 
     if (!salesUser) {

@@ -79,7 +79,6 @@ export async function PATCH(req: Request) {
     });
 
     // Create activity logs for each updated lead
-    // Create activity logs for each updated lead
     for (const leadId of leadIds) {
       await createActivityLog({
         action: "STATUS_CHANGE",

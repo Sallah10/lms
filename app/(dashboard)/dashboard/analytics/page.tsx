@@ -2,7 +2,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
 import {
@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
     queryKey: ["dashboard-analytics"],
     queryFn: fetchAnalytics,
   });
-  const router = useRouter();
+  // const router = useRouter();
 
   useEffect(() => {
     if (error) console.error(error);
@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
 
   if (!data) return <div>Unable to load analytics</div>;
 
-  console.log(data);
+  // console.log(data);
 
   const {
     totalLeads,
@@ -173,8 +173,8 @@ export default function AnalyticsPage() {
                     p.priority === "URGENT"
                       ? "text-red-600"
                       : p.priority === "HIGH"
-                      ? "text-orange-600"
-                      : "text-gray-600";
+                        ? "text-orange-600"
+                        : "text-gray-600";
                   return (
                     <Link
                       key={p.priority}

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parse } from "csv-parse/sync";
-import { Role } from "@prisma/client";
+// import { Role } from "@prisma/client";
 
 type CsvRecord = Record<string, string> & {
   name?: string;

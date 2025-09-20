@@ -7,7 +7,8 @@ export const resend = new Resend(process.env.RESEND_API_KEY);
 // Optional: Test function to verify setup
 export async function testResend() {
   try {
-    const { data, error } = await resend.emails.send({
+    // data -> to be used under with error to console.log data
+    const { error } = await resend.emails.send({
       from: "LMS System <system@yourdomain.com>",
       to: "your-email@example.com",
       subject: "Resend Setup Test",
@@ -19,7 +20,7 @@ export async function testResend() {
       return false;
     }
 
-    console.log("Resend test successful:", data);
+    // console.log("Resend test successful:", data);
     return true;
   } catch (error) {
     console.error("Resend test error:", error);

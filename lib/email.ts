@@ -25,7 +25,7 @@ export async function sendDeletionNotificationEmail(
       return false;
     }
 
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       //   from: "LMS System <system@yourdomain.com>",
       from: "LMS System <onboarding@resend.dev>",
       to: cleanRecipients, // ✅ NOW SENDS TO MULTIPLE RECIPIENTS
@@ -89,7 +89,7 @@ export async function sendDeletionNotificationEmail(
       return false;
     }
 
-    console.log(`Deletion notification sent to: ${cleanRecipients.join(", ")}`);
+    // console.log(`Deletion notification sent to: ${cleanRecipients.join(", ")}`);
     return true;
   } catch (error) {
     console.error("Email sending failed:", error);

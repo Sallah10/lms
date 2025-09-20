@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const myLeads = url.searchParams.get("myLeads") === "true";
-    const includeService = url.searchParams.get("includeService") === "true";
+    // const includeService = url.searchParams.get("includeService") === "true";
 
     // Build the WHERE clause
     const where: any = {};
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    const { leadIds, format = "csv" } = await req.json();
+    const { leadIds } = await req.json();
 
     if (!leadIds || !Array.isArray(leadIds)) {
       return new NextResponse("Lead IDs are required", { status: 400 });

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,10 +30,11 @@ interface Lead {
 }
 
 export default function VerificationPage() {
-  const router = useRouter();
+  // const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectingLead, setRejectingLead] = useState<Lead | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [rejectionNotes, setRejectionNotes] = useState("");
 
   useEffect(() => {
@@ -205,8 +206,8 @@ export default function VerificationPage() {
                             lead.priority === "HIGH"
                               ? "bg-red-100 text-red-800"
                               : lead.priority === "MEDIUM"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-green-100 text-green-800"
                           }
                         >
                           {lead.priority}
