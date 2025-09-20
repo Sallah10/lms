@@ -28,9 +28,16 @@ import {
   Calendar,
   MoreHorizontal,
   ArrowUpDown,
-  Trash2, // ADD FOR DELETE ACTION
+  Trash2,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { DeleteModal } from "@/components/DeleteModal";
+// ADD this import if you don't have it
+import { showToast } from "@/lib/toast";
+import { toast } from "sonner";
+import { DateRangeFilter } from "./DateFilter"; // IMPORT DATE RANGE FILTER
 
 interface Owner {
   id: string;
@@ -98,10 +105,68 @@ export default function EnhancedLeadsTable({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const searchParams = useSearchParams();
   const urlPriority = searchParams.get("priority");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [dateRange, setDateRange] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>({
+    start: null,
+    end: null,
+  });
+
+  const fetchLeadsWithFilters = async () => {
+    try {
+      const url = new URL("/api/leads", window.location.origin);
+
+      const isMyLeadsMode = !!fetchFunction && queryKey.includes("my-leads");
+
+      if (isMyLeadsMode) {
+        url.searchParams.append("myLeads", "true"); // ✅ Add myLeads=true for My Leads page
+      }
+
+      // ADD DATE FILTER PARAMS
+      if (dateRange.start) {
+        url.searchParams.append("startDate", dateRange.start.toISOString());
+      }
+      if (dateRange.end) {
+        url.searchParams.append("endDate", dateRange.end.toISOString());
+      }
+
+      // Existing filters
+      if (searchTerm) url.searchParams.append("q", searchTerm);
+      if (statusFilter !== "all")
+        url.searchParams.append("status", statusFilter);
+      if (priorityFilter !== "all")
+        url.searchParams.append("priority", priorityFilter);
+
+      const response = await fetch(url.toString());
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      throw new Error("Failed to fetch leads");
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      throw error;
+    }
+  };
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: [...queryKey, refreshKey], // USE THE PASSED QUERY KEY
-    queryFn: fetchFunction, // USE THE PASSED FETCH FUNCTION
+    queryKey: [
+      ...queryKey,
+      refreshKey,
+      searchTerm,
+      statusFilter,
+      priorityFilter,
+      dateRange,
+    ],
+    queryFn: fetchFunction || fetchLeadsWithFilters, // USE THE PASSED FETCH FUNCTION
   });
 
   useEffect(() => {
@@ -141,39 +206,75 @@ export default function EnhancedLeadsTable({
     }
   };
 
-  // ADD DELETE FUNCTION
-  const handleDeleteLead = async (leadId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this lead? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
+  // const handleDeleteLead = async (leadId: string) => {
+  //   if (
+  //     !confirm(
+  //       "Are you sure you want to delete this lead? This action cannot be undone."
+  //     )
+  //   ) {
+  //     return;
+  //   }
 
+  //   try {
+  //     const res = await fetch(`/api/leads/${leadId}`, {
+  //       method: "DELETE",
+  //     });
+
+  //     if (res.ok) {
+  //       queryClient.invalidateQueries({ queryKey: queryKey });
+  //       alert("Lead deleted successfully!");
+  //     } else {
+  //       const error = await res.text();
+  //       alert(`Failed to delete: ${error}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Delete error:", error);
+  //     alert("An error occurred while deleting the lead.");
+  //   }
+  // };
+
+  // ADD DELETE FUNCTION
+  const handleDeleteLead = async (reason: string) => {
+    if (!leadToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}`, {
+      const res = await fetch(`/api/leads/${leadToDelete.id}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason }),
       });
 
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: queryKey });
-        alert("Lead deleted successfully!");
+        showToast.success(`Lead "${leadToDelete.name}" archived successfully!`);
+        setDeleteModalOpen(false);
       } else {
         const error = await res.text();
-        alert(`Failed to delete: ${error}`);
+        throw new Error(error || "Delete failed");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert("An error occurred while deleting the lead.");
+      showToast.error("Failed to delete lead");
+    } finally {
+      setIsDeleting(false);
+      setLeadToDelete(null);
     }
+  };
+
+  // ADD this helper function to open the modal
+  const openDeleteModal = (leadId: string, leadName: string) => {
+    setLeadToDelete({ id: leadId, name: leadName });
+    setDeleteModalOpen(true);
   };
 
   const toggleSelectAll = () => {
     setSelectedLeads(
       selectedLeads.length === processedLeads.length
         ? []
-        : processedLeads.map((l) => l.id)
+        : processedLeads.map((l: Lead) => l.id)
     );
   };
 
@@ -185,16 +286,67 @@ export default function EnhancedLeadsTable({
     );
   };
 
+  const handleBulkExport = async () => {
+    if (selectedLeads.length === 0) {
+      toast.error("Please select at least one lead to export");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/leads/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: selectedLeads }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+
+        // Get filename from content-disposition or use default
+        const contentDisposition = response.headers.get("content-disposition");
+        const filename = contentDisposition
+          ? contentDisposition.split("filename=")[1].replace(/"/g, "")
+          : `leads_export_${new Date().toISOString().split("T")[0]}.csv`;
+
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast.success(`Exported ${selectedLeads.length} leads successfully`);
+        setSelectedLeads([]); // Clear selection after export
+      } else {
+        throw new Error(await response.text());
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export leads");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const processedLeads = useMemo(() => {
     if (!data?.leads) return [];
 
-    const filtered = data.leads.filter((lead) => {
+    const filtered = data.leads.filter((lead: Lead) => {
       const matchesSearch =
         searchTerm === "" ||
         lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (lead.phone &&
-          lead.phone.toLowerCase().includes(searchTerm.toLowerCase()));
+          lead.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (lead.address &&
+          lead.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (lead.service &&
+          lead.service.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesStatus =
         statusFilter === "all" || lead.status.name === statusFilter;
@@ -219,9 +371,9 @@ export default function EnhancedLeadsTable({
     });
 
     // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortField as keyof typeof a];
-      let bValue: any = b[sortField as keyof typeof b];
+    filtered.sort((a: Lead, b: Lead) => {
+      let aValue: any = a[sortField as keyof Lead];
+      let bValue: any = b[sortField as keyof Lead];
 
       // Handle nested fields
       if (sortField === "owner") {
@@ -275,62 +427,87 @@ export default function EnhancedLeadsTable({
 
   return (
     <div className="space-y-4">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <DateRangeFilter
+          onDateRangeChange={(range) => {
+            setDateRange(range);
+            // Optional: auto-refresh when date changes
+            // refetch();
+          }}
+        />
+      </div>
+
       {/* Bulk Actions Bar - Conditionally rendered */}
       {showBulkActions && selectedLeads.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
           <span className="text-sm text-blue-800">
             {selectedLeads.length} lead(s) selected
           </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Bulk Actions
-                <MoreHorizontal className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("REVIEWED")}
-              >
-                Mark as Reviewed
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("VERIFIED")}
-              >
-                Mark as Verified
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("REJECTED")}
-              >
-                Mark as Rejected
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("PROPOSAL_SENT")}
-              >
-                Mark as Proposal Sent
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("PROPOSAL_CONFIRMED")}
-              >
-                Mark as Proposal Confirmed
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("AGREED")}
-              >
-                Mark as Agreed
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("ONBOARDING")}
-              >
-                Mark as Onboarding
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleBulkStatusChange("ONBOARDED")}
-              >
-                Mark as Onboarded
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Bulk Actions (Change Status)
+                  <MoreHorizontal className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("REVIEWED")}
+                >
+                  Mark as Reviewed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("VERIFIED")}
+                >
+                  Mark as Verified
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("REJECTED")}
+                >
+                  Mark as Rejected
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("PROPOSAL_SENT")}
+                >
+                  Mark as Proposal Sent
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("PROPOSAL_CONFIRMED")}
+                >
+                  Mark as Proposal Confirmed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("AGREED")}
+                >
+                  Mark as Agreed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("ONBOARDING")}
+                >
+                  Mark as Onboarding
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBulkStatusChange("ONBOARDED")}
+                >
+                  Mark as Onboarded
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              onClick={handleBulkExport}
+              variant="outline"
+              size="sm"
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Export Selected ({selectedLeads.length})
+            </Button>
+          </div>
         </div>
       )}
 
@@ -444,7 +621,7 @@ export default function EnhancedLeadsTable({
             </tr>
           </thead>
           <tbody className="w-full">
-            {processedLeads.map((lead) => (
+            {processedLeads.map((lead: Lead) => (
               <tr key={lead.id} className="border-b hover:bg-gray-50">
                 {showBulkActions && ( // Conditionally show checkbox cell
                   <td className="p-3">
@@ -492,8 +669,8 @@ export default function EnhancedLeadsTable({
                       lead.priority === "HIGH"
                         ? "bg-red-100 text-red-800"
                         : lead.priority === "MEDIUM"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-green-100 text-green-800"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
                     }
                   >
                     {lead.priority}
@@ -505,20 +682,20 @@ export default function EnhancedLeadsTable({
                       lead.status.name === "NEW"
                         ? "bg-blue-100 text-blue-800"
                         : lead.status.name === "REVIEWED"
-                        ? "bg-purple-100 text-purple-800"
-                        : lead.status.name === "VERIFIED"
-                        ? "bg-green-100 text-green-800"
-                        : lead.status.name === "REJECTED"
-                        ? "bg-red-100 text-red-800"
-                        : lead.status.name === "PROPOSAL_SENT"
-                        ? "bg-orange-100 text-orange-800"
-                        : lead.status.name === "PROPOSAL_CONFIRMED"
-                        ? "bg-indigo-100 text-indigo-800"
-                        : lead.status.name === "AGREED"
-                        ? "bg-teal-100 text-teal-800"
-                        : lead.status.name === "ONBOARDING"
-                        ? "bg-cyan-100 text-cyan-800"
-                        : "bg-gray-100 text-gray-800"
+                          ? "bg-purple-100 text-purple-800"
+                          : lead.status.name === "VERIFIED"
+                            ? "bg-green-100 text-green-800"
+                            : lead.status.name === "REJECTED"
+                              ? "bg-red-100 text-red-800"
+                              : lead.status.name === "PROPOSAL_SENT"
+                                ? "bg-orange-100 text-orange-800"
+                                : lead.status.name === "PROPOSAL_CONFIRMED"
+                                  ? "bg-indigo-100 text-indigo-800"
+                                  : lead.status.name === "AGREED"
+                                    ? "bg-teal-100 text-teal-800"
+                                    : lead.status.name === "ONBOARDING"
+                                      ? "bg-cyan-100 text-cyan-800"
+                                      : "bg-gray-100 text-gray-800"
                     }
                   >
                     {lead.status.name}
@@ -552,7 +729,7 @@ export default function EnhancedLeadsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteLead(lead.id)}
+                          onClick={() => openDeleteModal(lead.id, lead.name)}
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
@@ -577,6 +754,21 @@ export default function EnhancedLeadsTable({
           </div>
         )}
       </div>
+      {/* Delete Modal */}
+      {deleteModalOpen && leadToDelete && (
+        <DeleteModal
+          open={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setLeadToDelete(null);
+          }}
+          onConfirm={handleDeleteLead}
+          title="Archive Lead"
+          description="This lead will be moved to archives. The CTO will be notified of this action with the reason provided."
+          itemName={leadToDelete.name}
+          isLoading={isDeleting}
+        />
+      )}
     </div>
   );
 }

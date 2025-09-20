@@ -70,28 +70,47 @@ export default function NotificationsClient({
   const [activities] = useState<ActivityLog[]>(initialActivities);
 
   // Filter activities based on selection
+
+  // UPDATE the filter function
   const filteredActivities = activities.filter((log) => {
     if (filter === "all") return true;
-    if (filter === "sales") return log.action.includes("SALES_");
-    if (filter === "pdm") return log.action.includes("PDM_");
-    if (filter === "care") return log.action.includes("CARE_");
-    if (filter === "admin") return log.action.includes("ADMIN_");
+    if (filter === "sales")
+      return log.action.includes("SALES_") || log.action.includes("LEAD_");
+    if (filter === "pdm")
+      return log.action.includes("PDM_") || log.action.includes("REVIEW");
+    if (filter === "care")
+      return log.action.includes("CARE_") || log.action.includes("VERIF");
+    if (filter === "admin")
+      return (
+        log.action.includes("ADMIN_") ||
+        log.action.includes("USER_") ||
+        log.action.includes("DELETE") ||
+        log.action.includes("UPDATE_SETTINGS")
+      );
     if (filter === "system")
-      return log.action.includes("BULK_") || log.action.includes("SYSTEM_");
+      return (
+        log.action.includes("BULK_") ||
+        log.action.includes("SYSTEM_") ||
+        log.action.includes("EXPORT")
+      );
     return true;
   });
 
   const getActivityStyle = (action: string) => {
-    if (action.includes("SALES_")) {
+    if (action.includes("SALES_") || action.includes("LEAD_")) {
       return { borderColor: "border-blue-500", icon: "💼", label: "Sales" };
     }
-    if (action.includes("PDM_")) {
+    if (action.includes("PDM_") || action.includes("REVIEW")) {
       return { borderColor: "border-purple-500", icon: "👔", label: "PDM" };
     }
-    if (action.includes("CARE_")) {
+    if (action.includes("CARE_") || action.includes("VERIF")) {
       return { borderColor: "border-green-500", icon: "🤝", label: "Care" };
     }
-    if (action.includes("ADMIN_")) {
+    if (
+      action.includes("ADMIN_") ||
+      action.includes("USER_") ||
+      action.includes("DELETE")
+    ) {
       return { borderColor: "border-red-500", icon: "⚙️", label: "Admin" };
     }
     return { borderColor: "border-gray-500", icon: "🔔", label: "System" };
@@ -261,7 +280,7 @@ export default function NotificationsClient({
                     {/* Show owner information handling both formats */}
                     {duplicate.leads &&
                       duplicate.leads.slice(0, 3).map((lead, leadIndex) => (
-                        <div key={leadIndex} className="text-xs text-gray-500">
+                        <span key={leadIndex} className="text-xs text-gray-500">
                           • Owner:{" "}
                           {
                             // Handle both string and object formats for owner
@@ -270,7 +289,7 @@ export default function NotificationsClient({
                               : lead.owner?.name || "Unassigned"
                           }{" "}
                           - {new Date(lead.createdAt).toLocaleDateString()}
-                        </div>
+                        </span>
                       ))}
                     {duplicate.leads && duplicate.leads.length > 3 && (
                       <p className="text-xs text-gray-400">

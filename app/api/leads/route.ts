@@ -13,6 +13,10 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
+    // In your leads API route, add date filtering:
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
+
     const myLeads = url.searchParams.get("myLeads") === "true";
     const includeService = url.searchParams.get("includeService") === "true";
     const q = url.searchParams.get("q") || undefined;
@@ -25,9 +29,29 @@ export async function GET(req: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
-    // If myLeads=true or user is SALES, only show their own leads
+    if (session.user.role === Role.SALES) {
+      where.ownerId = session.user.id;
+    }
+
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
     if (myLeads) {
       where.ownerId = session.user.id;
+    }
+
+    if (!myLeads) {
+      if (assigned === "unassigned") {
+        where.ownerId = null;
+      } else if (assigned === "me") {
+        where.ownerId = session.user.id;
+      } else if (assigned && assigned !== "all") {
+        where.ownerId = assigned;
+      }
     }
 
     // Otherwise, apply normal role-based filtering
@@ -41,22 +65,29 @@ export async function GET(req: Request) {
     }
     // ADMIN, PDM, CUSTOMER_CARE see all leads (no extra filter)
 
-    if (assigned === "unassigned") {
-      where.ownerId = null;
-    } else if (assigned === "me") {
-      where.ownerId = session.user.id;
-    } else if (assigned && assigned !== "all") {
-      where.ownerId = assigned; // Specific user ID
-    }
+    // if (assigned === "unassigned") {
+    //   where.ownerId = null;
+    // } else if (assigned === "me") {
+    //   where.ownerId = session.user.id;
+    // } else if (assigned && assigned !== "all") {
+    //   where.ownerId = assigned; // Specific user ID
+    // }
 
     if (q) {
       where.OR = [
         { name: { contains: q, mode: "insensitive" } },
         { email: { contains: q, mode: "insensitive" } },
         { phone: { contains: q } },
+        { address: { contains: q, mode: "insensitive" } },
+        { service: { contains: q, mode: "insensitive" } },
       ];
     }
-    if (status) where.status = status;
+    if (status) {
+      where.status = {
+        name: status, // ✅ Filter by status name through relation
+      };
+    }
+
     if (priority) where.priority = priority;
 
     // 3. Fetch the leads with the appropriate filter
@@ -184,6 +215,7 @@ export async function POST(req: Request) {
       service,
       priority,
       salesUserId,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       salesUserEmail,
     } = body;
 

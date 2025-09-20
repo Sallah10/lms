@@ -110,3 +110,95 @@ export async function GET(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Only allow ADMIN, PDM, CUSTOMER_CARE to export
+    const allowedRoles = ["ADMIN", "PDM", "CUSTOMER_CARE"] as const;
+    if (
+      !allowedRoles.includes(
+        session.user.role as "ADMIN" | "PDM" | "CUSTOMER_CARE"
+      )
+    ) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    const { leadIds, format = "csv" } = await req.json();
+
+    if (!leadIds || !Array.isArray(leadIds)) {
+      return new NextResponse("Lead IDs are required", { status: 400 });
+    }
+
+    // Get selected leads with related data
+    const leads = await prisma.lead.findMany({
+      where: {
+        id: { in: leadIds },
+        isDeleted: false,
+      },
+      include: {
+        owner: { select: { name: true, email: true } },
+        status: { select: { name: true } },
+        stage: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (leads.length === 0) {
+      return new NextResponse("No leads found", { status: 404 });
+    }
+
+    // Convert to CSV
+    const csvHeaders =
+      "Name,Email,Phone,Service,Source,Priority,Status,Stage,Owner,Created At,Address,Assets,Notes\n";
+
+    const csvRows = leads
+      .map((lead) => {
+        const escapeCsv = (str: string | null | undefined) => {
+          if (!str) return "";
+          return `"${str.replace(/"/g, '""')}"`;
+        };
+
+        return [
+          escapeCsv(lead.name),
+          escapeCsv(lead.email),
+          escapeCsv(lead.phone),
+          escapeCsv(lead.service),
+          escapeCsv(lead.source),
+          escapeCsv(lead.priority),
+          escapeCsv(lead.status?.name),
+          escapeCsv(lead.stage?.name),
+          escapeCsv(lead.owner?.name),
+          lead.createdAt.toISOString(),
+          escapeCsv(lead.address),
+          escapeCsv(lead.assets),
+          escapeCsv(lead.notes),
+        ].join(",");
+      })
+      .join("\n");
+
+    const csvData = csvHeaders + csvRows;
+
+    // Create filename with timestamp
+    const timestamp = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const filename = `leads_export_${timestamp}.csv`;
+
+    return new NextResponse(csvData, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    });
+  } catch (error) {
+    console.error("Export error:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

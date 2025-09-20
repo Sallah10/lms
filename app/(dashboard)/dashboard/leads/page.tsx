@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
-import { Download, Upload, RefreshCw } from "lucide-react";
+import { Download, Upload, RefreshCw, Plus } from "lucide-react";
 import CsvImporter from "@/app/(dashboard)/_components/CsvImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,8 +112,12 @@ export default function LeadsPage() {
               Create New
             </Button>
           </Link> */}
+
             <Link href="/dashboard/leads/new">
-              <Button>Create New Lead</Button>
+              <Button className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create New
+              </Button>
             </Link>
           </div>
         </div>
@@ -123,7 +127,7 @@ export default function LeadsPage() {
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <Input
-            placeholder="Search partners or contacts..."
+            placeholder="Search partners, address or contacts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full sm:max-w-sm"

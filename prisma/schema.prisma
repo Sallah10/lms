@@ -21,6 +21,8 @@ model User {
   leads        Lead[]        @relation("LeadOwner")
   sessions     Session[]
   activityLogs ActivityLog[] @relation("UserActivityLogs")
+
+  Lead Lead[] @relation("LeadDeleter")
 }
 
 model Lead {
@@ -48,6 +50,28 @@ model Lead {
   stage         LeadStage       @relation(fields: [stageId], references: [id])
   status        LeadStatusModel @relation(fields: [statusId], references: [id])
   activityLogs  ActivityLog[]   @relation("LeadActivityLogs")
+isDeleted    Boolean   @default(false)
+deletedAt    DateTime?
+deletedById  String?
+deleteReason String?
+
+// Add relation:
+deletedBy    User?     @relation("LeadDeleter", fields: [deletedById], references: [id])
+}
+
+model DeletionAudit {
+  id           String   @id @default(cuid())
+  leadId       String
+  leadName     String
+  leadEmail    String
+  deletedById  String
+  deletedByName String
+  deleteReason String
+  deletedAt    DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+  
+  @@map("deletion_audits")
 }
 
 model LeadStage {

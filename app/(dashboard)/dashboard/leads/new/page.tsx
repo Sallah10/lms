@@ -63,6 +63,7 @@ export default function NewLeadPage() {
     source: "",
     priority: "MEDIUM",
     notes: "",
+    assets: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,6 +187,15 @@ export default function NewLeadPage() {
                     value={form.address}
                     onChange={handleChange}
                     placeholder="Full business address"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Assets</label>
+                  <Textarea
+                    value={form.assets}
+                    onChange={handleChange}
+                    placeholder="List any assets or equipment included..."
+                    rows={3}
                   />
                 </div>
                 <div className="space-y-2">

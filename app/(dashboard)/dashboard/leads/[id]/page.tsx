@@ -21,6 +21,12 @@ import {
 } from "lucide-react";
 import { DeleteLeadButton } from "@/app/(dashboard)/_components/DeleteLeadButton";
 import { ActivityLogs } from "@/components/ActivityLogs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PageProps {
   params: { id: string };
@@ -87,7 +93,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 Edit Lead
               </Button>
             </Link>
-            <DeleteLeadButton leadId={leadId} leadName={lead.name} />
+            {session.user.role === "ADMIN" && (
+              <DeleteLeadButton leadId={leadId} leadName={lead.name} />
+            )}
           </div>
         )}
       </div>
@@ -114,10 +122,22 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
                 <div className="flex items-start space-x-3">
                   <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
+                  {/* <div>
                     <p className="text-sm font-medium text-gray-700">Email</p>
                     <p className="text-sm text-gray-900">{lead.email}</p>
-                  </div>
+                  </div> */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="truncate max-w-[120px] block">
+                          {lead.email}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs break-words">{lead.email}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
 
                 <div className="flex items-start space-x-3">
@@ -161,6 +181,12 @@ export default async function LeadDetailPage({ params }: PageProps) {
                     </p>
                   </div>
                 </div>
+                {lead.assets && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Assets</h3>
+                    <p className="text-sm whitespace-pre-wrap">{lead.assets}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -195,12 +221,12 @@ export default async function LeadDetailPage({ params }: PageProps) {
                     lead.status.name === "NEW"
                       ? "bg-blue-100 text-blue-800"
                       : lead.status.name === "REVIEWED"
-                      ? "bg-purple-100 text-purple-800"
-                      : lead.status.name === "VERIFIED"
-                      ? "bg-green-100 text-green-800"
-                      : lead.status.name === "REJECTED"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-800"
+                        ? "bg-purple-100 text-purple-800"
+                        : lead.status.name === "VERIFIED"
+                          ? "bg-green-100 text-green-800"
+                          : lead.status.name === "REJECTED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
                   }
                 >
                   {lead.status.name}
@@ -216,8 +242,8 @@ export default async function LeadDetailPage({ params }: PageProps) {
                     lead.priority === "HIGH"
                       ? "bg-red-100 text-red-800"
                       : lead.priority === "MEDIUM"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-green-100 text-green-800"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-green-100 text-green-800"
                   }
                 >
                   {lead.priority}

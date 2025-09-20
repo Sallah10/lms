@@ -29,6 +29,7 @@ interface Lead {
   status: { id: string; name: string };
   notes?: string;
   nextFollowUp?: string;
+  assets?: string;
 }
 
 interface LeadStatus {
@@ -199,6 +200,13 @@ export default function EditLeadPage() {
                 <Input
                   value={lead.source || ""}
                   onChange={(e) => setLead({ ...lead, source: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Assets</label>
+                <Input
+                  value={lead.assets || ""}
+                  onChange={(e) => setLead({ ...lead, assets: e.target.value })}
                 />
               </div>
               <div>

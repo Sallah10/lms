@@ -1,0 +1,143 @@
+// components/DateRangeFilter.tsx
+"use client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, startOfWeek, endOfWeek, subDays } from "date-fns";
+import { CalendarIcon, FilterX } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface DateRangeFilterProps {
+  onDateRangeChange: (range: { start: Date | null; end: Date | null }) => void;
+  className?: string;
+}
+
+export function DateRangeFilter({
+  onDateRangeChange,
+  className,
+}: DateRangeFilterProps) {
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
+  const applyThisWeek = () => {
+    const today = new Date();
+    const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+    const end = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
+
+    setStartDate(start);
+    setEndDate(end);
+    onDateRangeChange({ start, end });
+  };
+
+  const applyLastWeek = () => {
+    const today = new Date();
+    const start = startOfWeek(subDays(today, 7), { weekStartsOn: 1 });
+    const end = endOfWeek(subDays(today, 7), { weekStartsOn: 1 });
+
+    setStartDate(start);
+    setEndDate(end);
+    onDateRangeChange({ start, end });
+  };
+
+  const clearFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    onDateRangeChange({ start: null, end: null });
+  };
+
+  return (
+    <div className={cn("flex flex-wrap gap-2 items-center", className)}>
+      {/* Date Pickers */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-[140px] justify-start"
+          >
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            {startDate ? format(startDate, "MMM dd") : "Start date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={startDate}
+            onSelect={(date) => {
+              setStartDate(date || undefined); // Handle undefined case
+              if (date && endDate && date > endDate) {
+                setEndDate(undefined); // Reset end date if it's before start
+              }
+            }}
+            disabled={(date) => (startDate ? date < startDate : false)} // Disable dates before start
+            autoFocus
+          />
+        </PopoverContent>
+      </Popover>
+
+      <span className="text-muted-foreground">-</span>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-[140px] justify-start"
+          >
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            {endDate ? format(endDate, "MMM dd") : "End date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={endDate}
+            onSelect={(date) => {
+              setEndDate(date || undefined); // Handle undefined case
+              if (date && startDate && date < startDate) {
+                setStartDate(undefined); // Reset start date if it's after end
+              }
+            }}
+            disabled={(date) => (startDate ? date < startDate : false)}
+            autoFocus
+          />
+        </PopoverContent>
+      </Popover>
+
+      {/* Quick Filter Buttons */}
+      <Button variant="outline" size="sm" onClick={applyThisWeek}>
+        This Week
+      </Button>
+
+      <Button variant="outline" size="sm" onClick={applyLastWeek}>
+        Last Week
+      </Button>
+
+      {(startDate || endDate) && (
+        <Button variant="ghost" size="sm" onClick={clearFilters}>
+          <FilterX className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
+      )}
+
+      {/* Apply Button */}
+      <Button
+        size="sm"
+        onClick={() =>
+          onDateRangeChange({
+            start: startDate || null,
+            end: endDate || null,
+          })
+        }
+        disabled={!startDate && !endDate}
+      >
+        Apply Filter
+      </Button>
+    </div>
+  );
+}
