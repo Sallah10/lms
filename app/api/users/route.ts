@@ -6,28 +6,34 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+// In your /api/users route PATCH handler
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== Role.ADMIN) {
-      return new NextResponse("Forbidden: Admins only", { status: 403 });
+    if (!session || session.user.role !== "ADMIN") {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
-    const { userId, isActive } = body;
+    const { userId, name, password, isActive } = body;
 
-    if (!userId || typeof isActive !== "boolean") {
-      return new NextResponse("User ID and isActive are required", { status: 400 });
+    if (!userId) {
+      return new NextResponse("User ID is required", { status: 400 });
     }
 
-    // Prevent self-deactivation
-    if (userId === session.user.id && !isActive) {
-      return new NextResponse("Cannot deactivate your own account", { status: 400 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    if (password) {
+      // Hash the new password
+      updateData.password = await bcrypt.hash(password, 12);
     }
 
-    const user = await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { isActive },
+      data: updateData,
       select: {
         id: true,
         name: true,
@@ -38,13 +44,12 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json(user);
+    return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("User update error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
-
 
 export async function GET() {
   try {
@@ -56,7 +61,7 @@ export async function GET() {
     }
 
     const users = await prisma.user.findMany({
-       where: { isActive: true },
+      where: { isActive: true },
       select: {
         id: true,
         name: true,

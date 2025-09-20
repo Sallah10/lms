@@ -1,10 +1,10 @@
-// app/dashboard/users/page.tsx
+// app/dashboard/users/page.tsx - ENHANCED WITH EDIT FUNCTIONALITY
 "use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { userToasts } from "@/lib/toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit, Eye, EyeOff } from "lucide-react";
 
 interface User {
   id: string;
@@ -36,14 +36,35 @@ async function createUser(userData: {
   return res.json();
 }
 
+async function updateUser(userData: {
+  userId: string;
+  name?: string;
+  password?: string;
+}) {
+  const res = await fetch("/api/users", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
+  });
+  if (!res.ok) throw new Error("Failed to update user");
+  return res.json();
+}
+
 export default function UsersPage() {
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
     password: "",
     role: "SALES",
+  });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    password: "",
   });
 
   // Fetch users
@@ -60,18 +81,33 @@ export default function UsersPage() {
   const createUserMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] }); // Refetch the list
-      setIsDialogOpen(false);
-      setNewUser({ name: "", email: "", password: "", role: "SALES" }); // Reset form
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setIsCreateDialogOpen(false);
+      setNewUser({ name: "", email: "", password: "", role: "SALES" });
+      userToasts.created(`user, ${newUser.name}`);
+    },
+    onError: () => {
+      userToasts.error("create");
+    },
+  });
+
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+      setEditForm({ name: "", password: "" });
+      userToasts.updated(`user, ${editingUser?.name}`);
+    },
+    onError: () => {
+      userToasts.error("update");
     },
   });
 
   const deactivateUser = async (userId: string, userName: string) => {
-    if (
-      !confirm(
-        `Are you sure you want to deactivate ${userName}? They will no longer be able to login.`
-      )
-    ) {
+    if (!confirm(`Are you sure you want to deactivate ${userName}?`)) {
       return;
     }
 
@@ -86,7 +122,6 @@ export default function UsersPage() {
         queryClient.invalidateQueries({ queryKey: ["users"] });
         userToasts.deleted(userName);
       } else {
-        const error = await response.text();
         userToasts.error("deactivate");
       }
     } catch (error) {
@@ -95,9 +130,39 @@ export default function UsersPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const openEditDialog = (user: User) => {
+    setEditingUser(user);
+    setEditForm({ name: user.name, password: "" });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createUserMutation.mutate(newUser);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const updateData: { userId: string; name?: string; password?: string } = {
+      userId: editingUser.id,
+    };
+
+    if (editForm.name !== editingUser.name) {
+      updateData.name = editForm.name;
+    }
+
+    if (editForm.password.trim()) {
+      updateData.password = editForm.password;
+    }
+
+    // Only update if there are changes
+    if (Object.keys(updateData).length > 1) {
+      updateUserMutation.mutate(updateData);
+    } else {
+      setIsEditDialogOpen(false);
+    }
   };
 
   if (isLoading) return <div className="p-8">Loading users...</div>;
@@ -108,7 +173,7 @@ export default function UsersPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold">User Management</h1>
         <button
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => setIsCreateDialogOpen(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           + Add User
@@ -158,7 +223,14 @@ export default function UsersPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
+                  <button
+                    onClick={() => openEditDialog(user)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Edit User"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => deactivateUser(user.id, user.name)}
                     className="text-red-600 hover:text-red-800"
@@ -173,12 +245,12 @@ export default function UsersPage() {
         </table>
       </div>
 
-      {/* Add User Dialog */}
-      {isDialogOpen && (
+      {/* Create User Dialog */}
+      {isCreateDialogOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold mb-4">Create New User</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
                 <input
@@ -235,7 +307,7 @@ export default function UsersPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => setIsCreateDialogOpen(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
                   Cancel
@@ -246,6 +318,85 @@ export default function UsersPage() {
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                 >
                   {createUserMutation.isPending ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Dialog */}
+      {isEditDialogOpen && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Edit User</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  required
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  disabled
+                  className="w-full p-2 border rounded bg-gray-100 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Email cannot be changed
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={editForm.password}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, password: e.target.value })
+                    }
+                    placeholder="Leave blank to keep current password"
+                    className="w-full p-2 border rounded pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to keep current password
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingUser(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateUserMutation.isPending}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updateUserMutation.isPending ? "Updating..." : "Update User"}
                 </button>
               </div>
             </form>

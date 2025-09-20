@@ -36,6 +36,18 @@ interface LeadStatus {
   name: string;
 }
 
+const AVAILABLE_SERVICES = [
+  "Chat with a doctor",
+  "Chat with a lawyer",
+  "Open Market",
+  "Pharmacies",
+  "Logistics",
+  "Store",
+  "Gadgets and Accessories",
+  "Foods & Drinks",
+  "NONE", // Add this option for no service selected
+];
+
 // { params }: { params: { id: string } }
 export default function EditLeadPage() {
   const router = useRouter();
@@ -163,13 +175,25 @@ export default function EditLeadPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Service</label>
-                <Input
-                  value={lead.service || ""}
-                  onChange={(e) =>
-                    setLead({ ...lead, service: e.target.value })
+                <Select
+                  value={lead.service || "NONE"}
+                  onValueChange={(value: string) =>
+                    setLead({ ...lead, service: value })
                   }
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_SERVICES.map((service) => (
+                      <SelectItem key={service} value={service}>
+                        {service}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
               <div>
                 <label className="text-sm font-medium">Source</label>
                 <Input

@@ -8,6 +8,12 @@ import { useSession } from "next-auth/react"; // ADD THIS IMPORT
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -463,7 +469,20 @@ export default function EnhancedLeadsTable({
                   </div>
                 </td>
                 <td className="p-3 text-xs">{lead.service || "N/A"}</td>
-                <td className="p-3 text-xs">{lead.address || "N/A"}</td>
+                <td className="p-3 text-sm">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="truncate max-w-[120px] block">
+                          {lead.address || "N/A"}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs break-words">{lead.address}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </td>
                 <td className="p-3 text-xs">
                   <Badge variant="outline">{lead.source || "N/A"}</Badge>
                 </td>

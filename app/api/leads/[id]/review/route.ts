@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { leadActivityLogs } from "@/lib/activityLog";
 
 export async function POST(
   request: NextRequest,
@@ -26,11 +27,18 @@ export async function POST(
     // Find the lead
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
+      include: {
+        status: true, // Include current status
+        stage: true,
+      },
     });
 
     if (!lead) {
       return new NextResponse("Lead not found", { status: 404 });
     }
+
+    // Store the OLD status for logging
+    const oldStatus = lead.status.name;
 
     // Find statuses
     const [reviewedStatus, verifiedStatus, rejectedStatus] = await Promise.all([
@@ -46,9 +54,10 @@ export async function POST(
     let newStatusId: string;
     let inputedStatus: string;
 
+    // CORRECT CODE for review API:
     if (action === "APPROVE") {
-      newStatusId = verifiedStatus.id;
-      inputedStatus = "VERIFIED";
+      newStatusId = reviewedStatus.id; // ✅ Set to REVIEWED
+      inputedStatus = "REVIEWED"; // ✅ Goes to verification queue
     } else if (action === "REJECT") {
       newStatusId = rejectedStatus.id;
       inputedStatus = "REJECTED";
@@ -66,6 +75,9 @@ export async function POST(
           ? `${lead.notes || ""}\n\nRejection Notes: ${notes}`.trim()
           : lead.notes,
       },
+      include: {
+        status: true, // Include new status
+      },
     });
 
     // Create activity log
@@ -79,6 +91,15 @@ export async function POST(
         userId: session.user.id,
       },
     });
+
+    await leadActivityLogs.statusChange(
+      leadId,
+      lead.name,
+      oldStatus, // Old status
+      updatedLead.status.name, // New status
+      session.user.id,
+      action === "REJECT" ? `Rejection reason: ${notes}` : "Lead approved"
+    );
 
     return NextResponse.json({ success: true, lead: updatedLead });
   } catch (error) {

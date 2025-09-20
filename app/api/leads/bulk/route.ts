@@ -79,17 +79,16 @@ export async function PATCH(req: Request) {
     });
 
     // Create activity logs for each updated lead
+    // Create activity logs for each updated lead
     for (const leadId of leadIds) {
-      await createActivityLog(
-        leadId,
-        session.user.id,
-        "STATUS_CHANGE",
-        `Bulk status update by ${session.user.name} (${session.user.role})`,
-        undefined,
-        status
-      );
+      await createActivityLog({
+        action: "STATUS_CHANGE",
+        details: `Bulk status update by ${session.user.name} (${session.user.role})`,
+        newValue: status,
+        leadId: leadId,
+        userId: session.user.id,
+      });
     }
-
     return NextResponse.json({
       success: true,
       message: `Successfully updated ${updateResult.count} lead(s)`,

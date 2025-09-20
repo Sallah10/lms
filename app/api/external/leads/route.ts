@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
+// After successfully creating a lead, add:
+import { salesActivityLogs } from "@/lib/activityLog";
 
 const EXPECTED_API_KEY = process.env.INTERNAL_API_KEY;
 
@@ -180,6 +182,8 @@ export async function POST(req: Request) {
         statusId: newStatus.id,
       },
     });
+
+    await salesActivityLogs.leadCreated(lead.id, lead.name, salesUser.id);
 
     return NextResponse.json(
       { success: true, leadId: lead.id },

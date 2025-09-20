@@ -30,7 +30,11 @@ export async function GET() {
 
     // Leads needing verification
     const leadsToVerify = await prisma.lead.findMany({
-      where: { statusId: reviewedStatus.id },
+      where: {
+        statusId: reviewedStatus.id,
+        // Also ensure they're not onboarded yet
+        onboarded: false,
+      },
       include: {
         owner: { select: { name: true } },
         status: { select: { name: true } },
