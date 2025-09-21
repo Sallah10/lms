@@ -68,26 +68,34 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
+    // async redirect({ url, baseUrl }) {
+    //   // Don’t redirect API calls
+    //   if (url.startsWith("/api")) return baseUrl;
+    //   return url;
     async redirect({ url, baseUrl }) {
-      // Don’t redirect API calls
-      if (url.startsWith("/api")) return baseUrl;
-      return url;
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production", // Secure in production only
-        maxAge: 30 * 24 * 60 * 60, // ← 30 days for the cookie too
-      },
-    },
-  },
+
+  // cookies: {
+  //   sessionToken: {
+  //     name: `next-auth.session-token`,
+  //     options: {
+  //       httpOnly: true,
+  //       sameSite: "lax",
+  //       path: "/",
+  //       secure: process.env.NODE_ENV === "production", // Secure in production only
+  //       maxAge: 30 * 24 * 60 * 60, // ← 30 days for the cookie too
+  //     },
+  //   },
+  // },
+
+  debug: process.env.NODE_ENV === "development",
+  useSecureCookies: process.env.NODE_ENV === "production",
 };
 
 export default NextAuth(authOptions);
