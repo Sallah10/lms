@@ -173,6 +173,20 @@ export async function PATCH(
 
     const { id } = await params;
 
+    // BLOCK direct status changes to invalid/rejected
+    if (body.statusId) {
+      const newStatus = await prisma.leadStatusModel.findUnique({
+        where: { id: body.statusId },
+      });
+
+      if (newStatus?.name === "INVALID" || newStatus?.name === "REJECTED") {
+        return new NextResponse(
+          "Cannot directly change to INVALID or REJECTED status. Use the appropriate review process.",
+          { status: 400 }
+        );
+      }
+    }
+
     // Find the lead to check ownership and existence
     const leadToUpdate = await prisma.lead.findUnique({
       where: { id },

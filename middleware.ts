@@ -17,6 +17,25 @@ const roleBasedRoutes: Record<string, Role[]> = {
   "/api/leads": [Role.ADMIN, Role.SALES, Role.PDM, Role.CUSTOMER_CARE], // Protect APIs too!
   "/api/users": [Role.ADMIN], // ADMIN ONLY API
 };
+export function middleware() {
+  const response = NextResponse.next();
+
+  // Allow requests from sales portal domain
+  response.headers.set(
+    "Access-Control-Allow-Origin",
+    "https://lms-sales-portal.vercel.app"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  return response;
+}
 
 export default withAuth(
   function middleware(req: NextRequest) {
@@ -82,6 +101,7 @@ export const config = {
     "/api/auth/:path*",
     "/api/dashboard/:path*",
     "/api/register/:path*",
+    "/api/contact",
     // Add other API routes here as you create them
   ],
 };

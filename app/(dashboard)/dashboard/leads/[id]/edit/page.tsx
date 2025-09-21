@@ -67,7 +67,11 @@ export default function EditLeadPage() {
         const data = await response.json();
         if (response.ok) {
           setLead(data.lead);
-          setStatuses(data.statuses);
+          const allowedStatuses = data.statuses.filter(
+            (status: LeadStatus) =>
+              status.name !== "INVALID" && status.name !== "REJECTED"
+          );
+          setStatuses(allowedStatuses);
         } else {
           console.error("Failed to fetch lead data:", data.error);
         }
@@ -84,6 +88,17 @@ export default function EditLeadPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lead) return;
+
+    if (
+      lead.status?.name !== "INVALID" &&
+      lead.status?.name !== "REJECTED" &&
+      (lead.status?.name === "INVALID" || lead.status?.name === "REJECTED")
+    ) {
+      alert(
+        "Please use the verification/review pages to mark leads as invalid or rejected with proper reasons."
+      );
+      return;
+    }
 
     setIsSaving(true);
     try {
