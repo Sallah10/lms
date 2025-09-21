@@ -1,4 +1,4 @@
-// components/DateRangeFilter.tsx
+// components/DateRangeFilter.tsx - FIXED VERSION
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,30 +24,32 @@ export function DateRangeFilter({
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
-  const applyThisWeek = () => {
-    const today = new Date();
-    const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-    const end = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
-
+  // Helper function to update both state and parent
+  const updateDates = (start: Date | undefined, end: Date | undefined) => {
     setStartDate(start);
     setEndDate(end);
-    onDateRangeChange({ start, end });
+    onDateRangeChange({
+      start: start || null,
+      end: end || null,
+    });
+  };
+
+  const applyThisWeek = () => {
+    const today = new Date();
+    const start = startOfWeek(today, { weekStartsOn: 1 });
+    const end = endOfWeek(today, { weekStartsOn: 1 });
+    updateDates(start, end);
   };
 
   const applyLastWeek = () => {
     const today = new Date();
     const start = startOfWeek(subDays(today, 7), { weekStartsOn: 1 });
     const end = endOfWeek(subDays(today, 7), { weekStartsOn: 1 });
-
-    setStartDate(start);
-    setEndDate(end);
-    onDateRangeChange({ start, end });
+    updateDates(start, end);
   };
 
   const clearFilters = () => {
-    setStartDate(undefined);
-    setEndDate(undefined);
-    onDateRangeChange({ start: null, end: null });
+    updateDates(undefined, undefined);
   };
 
   return (
@@ -69,12 +71,15 @@ export function DateRangeFilter({
             mode="single"
             selected={startDate}
             onSelect={(date) => {
-              setStartDate(date || undefined); // Handle undefined case
-              if (date && endDate && date > endDate) {
-                setEndDate(undefined); // Reset end date if it's before start
-              }
+              const newStart = date || undefined;
+              setStartDate(newStart);
+              // Update parent immediately with new start date
+              onDateRangeChange({
+                start: newStart || null,
+                end: endDate || null,
+              });
             }}
-            disabled={(date) => (startDate ? date < startDate : false)} // Disable dates before start
+            disabled={(date) => (endDate ? date > endDate : false)} // Disable dates after end
             autoFocus
           />
         </PopoverContent>
@@ -98,12 +103,15 @@ export function DateRangeFilter({
             mode="single"
             selected={endDate}
             onSelect={(date) => {
-              setEndDate(date || undefined); // Handle undefined case
-              if (date && startDate && date < startDate) {
-                setStartDate(undefined); // Reset start date if it's after end
-              }
+              const newEnd = date || undefined;
+              setEndDate(newEnd);
+              // Update parent immediately with new end date
+              onDateRangeChange({
+                start: startDate || null,
+                end: newEnd || null,
+              });
             }}
-            disabled={(date) => (startDate ? date < startDate : false)}
+            disabled={(date) => (startDate ? date < startDate : false)} // Disable dates before start
             autoFocus
           />
         </PopoverContent>
@@ -125,19 +133,7 @@ export function DateRangeFilter({
         </Button>
       )}
 
-      {/* Apply Button */}
-      <Button
-        size="sm"
-        onClick={() =>
-          onDateRangeChange({
-            start: startDate || null,
-            end: endDate || null,
-          })
-        }
-        disabled={!startDate && !endDate}
-      >
-        Apply Filter
-      </Button>
+      {/* REMOVE the "Apply Filter" button - it's causing the issue */}
     </div>
   );
 }
