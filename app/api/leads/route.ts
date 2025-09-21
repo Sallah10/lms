@@ -17,6 +17,8 @@ export async function GET(req: Request) {
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
 
+    console.log("API received - startDate:", startDate, "endDate:", endDate);
+
     const myLeads = url.searchParams.get("myLeads") === "true";
     const includeService = url.searchParams.get("includeService") === "true";
     const q = url.searchParams.get("q") || undefined;
@@ -34,10 +36,19 @@ export async function GET(req: Request) {
     }
 
     if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // ✅ Set to end of day
+
       where.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
+        gte: start,
+        lte: end, // Now includes the entire end date
       };
+
+      // console.log("Date filter applied:", {
+      //   gte: new Date(startDate),
+      //   lte: new Date(endDate),
+      // });
     }
 
     if (myLeads) {
@@ -89,6 +100,8 @@ export async function GET(req: Request) {
     }
 
     if (priority) where.priority = priority;
+
+    console.log("Final where clause:", JSON.stringify(where, null, 2));
 
     // 3. Fetch the leads with the appropriate filter
     const leads = await prisma.lead.findMany({

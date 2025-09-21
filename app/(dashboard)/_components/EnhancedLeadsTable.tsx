@@ -133,10 +133,15 @@ export default function EnhancedLeadsTable({
       // ADD DATE FILTER PARAMS
       if (dateRange.start) {
         url.searchParams.append("startDate", dateRange.start.toISOString());
+        // console.log("Adding startDate:", dateRange.start.toISOString());
       }
       if (dateRange.end) {
         url.searchParams.append("endDate", dateRange.end.toISOString());
+        // console.log("Adding endDate:", dateRange.end.toISOString());
       }
+
+      // console.log("Fetching URL:", url.toString());
+      // console.log("Date range:", dateRange);
 
       // Existing filters
       if (searchTerm) url.searchParams.append("q", searchTerm);
@@ -144,6 +149,8 @@ export default function EnhancedLeadsTable({
         url.searchParams.append("status", statusFilter);
       if (priorityFilter !== "all")
         url.searchParams.append("priority", priorityFilter);
+
+      // console.log("Final URL:", url.toString());
 
       const response = await fetch(url.toString());
       if (response.ok) {
@@ -166,7 +173,7 @@ export default function EnhancedLeadsTable({
       priorityFilter,
       dateRange,
     ],
-    queryFn: fetchFunction || fetchLeadsWithFilters, // USE THE PASSED FETCH FUNCTION
+    queryFn: fetchLeadsWithFilters, // USE THE PASSED FETCH FUNCTION
   });
 
   useEffect(() => {
@@ -174,6 +181,10 @@ export default function EnhancedLeadsTable({
       refetch();
     }
   }, [refreshKey, refetch]);
+
+  useEffect(() => {
+    // console.log("dateRange state changed:", dateRange);
+  }, [dateRange]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -430,6 +441,7 @@ export default function EnhancedLeadsTable({
       <div className="bg-white p-4 rounded-lg shadow">
         <DateRangeFilter
           onDateRangeChange={(range) => {
+            // console.log("Date range changed:", range);
             setDateRange(range);
             // Optional: auto-refresh when date changes
             // refetch();

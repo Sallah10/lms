@@ -73,8 +73,8 @@ export default function MyLeadsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <Link href="/dashboard" className="self-start md:self-auto">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Dashboard
@@ -87,7 +87,7 @@ export default function MyLeadsPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2  md:grid-cols-3 gap-2">
           <Button
             variant="outline"
             onClick={handleRefresh}
