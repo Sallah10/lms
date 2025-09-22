@@ -17,8 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, Mail, Lock, Building2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,18 +35,17 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/dashboard",
       redirect: false,
+      callbackUrl: "/dashboard",
     });
 
     setLoading(false);
 
     if (result?.error) {
       setError("Invalid email or password. Please try again.");
+    } else if (result?.ok && result.url) {
+      router.push(result.url);
     }
-    // else if (result?.ok) {
-    //   window.location.href = "/dashboard";
-    // }
   };
 
   const handleGoogleLogin = () => {
