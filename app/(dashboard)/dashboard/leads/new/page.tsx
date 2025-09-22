@@ -25,6 +25,7 @@ import {
   FileText,
   AlertCircle,
   Building,
+  Layers, // added icon
 } from "lucide-react";
 import { showToast } from "@/lib/toast";
 
@@ -189,9 +190,13 @@ export default function NewLeadPage() {
                     placeholder="Full business address"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Assets</label>
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium mb-4  text-gray-700">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Assets
+                  </label>
                   <Textarea
+                    name="assets" // <-- added name so handleChange updates form.assets
                     value={form.assets}
                     onChange={handleChange}
                     placeholder="List any assets or equipment included..."
