@@ -119,8 +119,8 @@ export default function NotificationsClient({
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard">
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <Link href="/dashboard" className="self-start md:self-center">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Dashboard
@@ -188,7 +188,7 @@ export default function NotificationsClient({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               {filteredActivities.map((log) => {
                 const style = getActivityStyle(log.action);
                 return (
@@ -196,11 +196,11 @@ export default function NotificationsClient({
                     key={log.id}
                     className={`border-l-4 ${style.borderColor} pl-4 py-3`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="flex  flex-col md:flex-row gap-4 md:justify-between items-start">
+                      <div className="flex-1 ">
+                        <div className="flex  flex-col md:flex-row md:items-center gap-2 mb-1">
                           <span className="text-sm">{style.icon}</span>
-                          <span className="font-medium">
+                          <span className="font-semibold text-sm md:text-xl">
                             {log.action.replace(/_/g, " ")}
                           </span>
                           <Badge variant="outline" className="text-xs">
@@ -214,9 +214,11 @@ export default function NotificationsClient({
                         </div>
 
                         {log.lead && (
-                          <p className="text-sm text-gray-600 mb-1">
+                          <p className="text-sm text-gray-600 mb-1 ">
                             Lead: <strong>{log.lead.name}</strong> (
-                            {log.lead.email})
+                            <span className="text-xs md:text-sm">
+                              {log.lead.email})
+                            </span>
                           </p>
                         )}
 
@@ -227,7 +229,9 @@ export default function NotificationsClient({
                         {log.oldValue && log.newValue && (
                           <p className="text-sm text-gray-600">
                             Changed from{" "}
-                            <span className="font-medium">{log.oldValue}</span>
+                            <span className="font-medium mr-2">
+                              {log.oldValue}
+                            </span>
                             to{" "}
                             <span className="font-medium">{log.newValue}</span>
                           </p>

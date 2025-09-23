@@ -90,8 +90,9 @@ export function ActivityLogs({
                   {log.oldValue && log.newValue && (
                     <p className="text-sm text-gray-600 ">
                       Changed from{" "}
-                      <span className="font-medium ml-2">{log.oldValue}</span>
-                      to <span className="font-medium">{log.newValue}</span>
+                      <span className="font-medium mr-2">{log.oldValue}</span>
+                      <span className="ml-2">to</span>{" "}
+                      <span className="font-medium">{log.newValue}</span>
                     </p>
                   )}
                 </div>
