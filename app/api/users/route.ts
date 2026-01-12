@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-// In your /api/users route PATCH handler
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -69,7 +68,7 @@ export async function GET() {
         role: true,
         createdAt: true,
         _count: {
-          select: { leads: true }, // Count the leads for each user
+          select: { leads: true },
         },
       },
       orderBy: { createdAt: "desc" },

@@ -36,7 +36,6 @@ export async function GET() {
   }
 }
 
-// Keep your existing PATCH method
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);

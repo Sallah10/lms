@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/(dashboard)/_components/EnhancedLeadsTable.tsx - FIXED VERSION
+// app/(dashboard)/_components/EnhancedLeadsTable.tsx (WITH PAGINATION)
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react"; // ADD THIS IMPORT
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,13 +31,14 @@ import {
   Trash2,
   Download,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { DeleteModal } from "@/components/DeleteModal";
-// ADD this import if you don't have it
 import { showToast } from "@/lib/toast";
 import { toast } from "sonner";
-import { DateRangeFilter } from "./DateFilter"; // IMPORT DATE RANGE FILTER
+import { DateRangeFilter } from "./DateFilter";
 
 interface Owner {
   id: string;
@@ -62,11 +63,17 @@ interface Lead {
   nextFollowUp?: string | null;
   createdAt: string;
   owner?: Owner | null;
-  ownerId?: string; // ADD THIS PROPERTY
+  ownerId?: string;
 }
 
 interface LeadsResponse {
   leads: Lead[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 async function fetchLeads(): Promise<LeadsResponse> {
@@ -99,7 +106,7 @@ export default function EnhancedLeadsTable({
   refreshKey = 0,
 }: EnhancedLeadsTableProps) {
   const queryClient = useQueryClient();
-  const { data: session } = useSession(); // GET SESSION
+  const { data: session } = useSession();
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -119,6 +126,8 @@ export default function EnhancedLeadsTable({
     start: null,
     end: null,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
 
   const fetchLeadsWithFilters = async () => {
     try {
@@ -127,30 +136,26 @@ export default function EnhancedLeadsTable({
       const isMyLeadsMode = !!fetchFunction && queryKey.includes("my-leads");
 
       if (isMyLeadsMode) {
-        url.searchParams.append("myLeads", "true"); // ✅ Add myLeads=true for My Leads page
+        url.searchParams.append("myLeads", "true");
       }
 
-      // ADD DATE FILTER PARAMS
       if (dateRange.start) {
         url.searchParams.append("startDate", dateRange.start.toISOString());
-        // console.log("Adding startDate:", dateRange.start.toISOString());
       }
       if (dateRange.end) {
         url.searchParams.append("endDate", dateRange.end.toISOString());
-        // console.log("Adding endDate:", dateRange.end.toISOString());
       }
 
-      // console.log("Fetching URL:", url.toString());
-      // console.log("Date range:", dateRange);
+      // Add pagination
+      url.searchParams.append("page", currentPage.toString());
+      url.searchParams.append("limit", itemsPerPage.toString());
 
-      // Existing filters
+      // filters
       if (searchTerm) url.searchParams.append("q", searchTerm);
       if (statusFilter !== "all")
         url.searchParams.append("status", statusFilter);
       if (priorityFilter !== "all")
         url.searchParams.append("priority", priorityFilter);
-
-      // console.log("Final URL:", url.toString());
 
       const response = await fetch(url.toString());
       if (response.ok) {
@@ -172,8 +177,10 @@ export default function EnhancedLeadsTable({
       statusFilter,
       priorityFilter,
       dateRange,
+      currentPage,
+      itemsPerPage,
     ],
-    queryFn: fetchLeadsWithFilters, // USE THE PASSED FETCH FUNCTION
+    queryFn: fetchLeadsWithFilters,
   });
 
   useEffect(() => {
@@ -183,8 +190,15 @@ export default function EnhancedLeadsTable({
   }, [refreshKey, refetch]);
 
   useEffect(() => {
-    // console.log("dateRange state changed:", dateRange);
-  }, [dateRange]);
+    // Reset to page 1 when filters change
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, dateRange]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Optional: Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -204,47 +218,19 @@ export default function EnhancedLeadsTable({
       });
 
       if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: queryKey }); // USE PASSED QUERY KEY
+        queryClient.invalidateQueries({ queryKey: queryKey });
         setSelectedLeads([]);
-        alert(`Status updated successfully for ${selectedLeads.length} leads!`);
+        toast.success(`Status updated for ${selectedLeads.length} leads!`);
       } else {
         const error = await res.text();
-        alert(`Failed to update: ${error}`);
+        toast.error(`Failed to update: ${error}`);
       }
     } catch (error) {
       console.error("Bulk update error:", error);
-      alert("An error occurred during the bulk update.");
+      toast.error("An error occurred during the bulk update.");
     }
   };
 
-  // const handleDeleteLead = async (leadId: string) => {
-  //   if (
-  //     !confirm(
-  //       "Are you sure you want to delete this lead? This action cannot be undone."
-  //     )
-  //   ) {
-  //     return;
-  //   }
-
-  //   try {
-  //     const res = await fetch(`/api/leads/${leadId}`, {
-  //       method: "DELETE",
-  //     });
-
-  //     if (res.ok) {
-  //       queryClient.invalidateQueries({ queryKey: queryKey });
-  //       alert("Lead deleted successfully!");
-  //     } else {
-  //       const error = await res.text();
-  //       alert(`Failed to delete: ${error}`);
-  //     }
-  //   } catch (error) {
-  //     console.error("Delete error:", error);
-  //     alert("An error occurred while deleting the lead.");
-  //   }
-  // };
-
-  // ADD DELETE FUNCTION
   const handleDeleteLead = async (reason: string) => {
     if (!leadToDelete) return;
 
@@ -275,7 +261,6 @@ export default function EnhancedLeadsTable({
     }
   };
 
-  // ADD this helper function to open the modal
   const openDeleteModal = (leadId: string, leadName: string) => {
     setLeadToDelete({ id: leadId, name: leadName });
     setDeleteModalOpen(true);
@@ -317,7 +302,6 @@ export default function EnhancedLeadsTable({
         const a = document.createElement("a");
         a.href = url;
 
-        // Get filename from content-disposition or use default
         const contentDisposition = response.headers.get("content-disposition");
         const filename = contentDisposition
           ? contentDisposition.split("filename=")[1].replace(/"/g, "")
@@ -332,7 +316,7 @@ export default function EnhancedLeadsTable({
         document.body.removeChild(a);
 
         toast.success(`Exported ${selectedLeads.length} leads successfully`);
-        setSelectedLeads([]); // Clear selection after export
+        setSelectedLeads([]);
       } else {
         throw new Error(await response.text());
       }
@@ -366,7 +350,6 @@ export default function EnhancedLeadsTable({
         lead.priority === priorityFilter ||
         (urlPriority && lead.priority === urlPriority);
 
-      // FIXED: Use lead.owner?.id instead of lead.ownerId
       const matchesAssigned =
         assignedFilter === "all" ||
         (assignedFilter === "unassigned" && !lead.owner?.id) ||
@@ -381,34 +364,28 @@ export default function EnhancedLeadsTable({
       );
     });
 
-    // Apply sorting
     filtered.sort((a: Lead, b: Lead) => {
       let aValue: any = a[sortField as keyof Lead];
       let bValue: any = b[sortField as keyof Lead];
 
-      // Handle nested fields
       if (sortField === "owner") {
         aValue = a.owner?.name || "";
         bValue = b.owner?.name || "";
       }
 
-      // Handle date fields
       if (sortField === "createdAt" || sortField === "nextFollowUp") {
         aValue = aValue ? new Date(aValue).getTime() : 0;
         bValue = bValue ? new Date(bValue).getTime() : 0;
       }
 
-      // Handle null/undefined values
       if (aValue == null) aValue = "";
       if (bValue == null) bValue = "";
 
-      // Convert to string for consistent comparison if not numbers
       if (typeof aValue !== "number" && typeof bValue !== "number") {
         aValue = String(aValue).toLowerCase();
         bValue = String(bValue).toLowerCase();
       }
 
-      // Perform comparison
       if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
@@ -423,9 +400,34 @@ export default function EnhancedLeadsTable({
     assignedFilter,
     sortField,
     sortDirection,
-    session?.user?.id, // ADD SESSION DEPENDENCY
+    session?.user?.id,
     urlPriority,
   ]);
+
+  // Generate pagination buttons
+  const generatePaginationButtons = () => {
+    if (!data?.pagination) return [];
+
+    const { currentPage: apiCurrentPage, totalPages } = data.pagination;
+    const buttons = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(
+      1,
+      apiCurrentPage - Math.floor(maxVisiblePages / 2)
+    );
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(i);
+    }
+
+    return buttons;
+  };
 
   if (isLoading)
     return <div className="flex justify-center p-8">Loading leads...</div>;
@@ -441,15 +443,12 @@ export default function EnhancedLeadsTable({
       <div className="bg-white p-4 rounded-lg shadow">
         <DateRangeFilter
           onDateRangeChange={(range) => {
-            // console.log("Date range changed:", range);
             setDateRange(range);
-            // Optional: auto-refresh when date changes
-            // refetch();
           }}
         />
       </div>
 
-      {/* Bulk Actions Bar - Conditionally rendered */}
+      {/* Bulk Actions Bar */}
       {showBulkActions && selectedLeads.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
           <span className="text-sm text-blue-800">
@@ -528,7 +527,7 @@ export default function EnhancedLeadsTable({
         <table className="w-full">
           <thead>
             <tr className="border-b bg-gray-50">
-              {showBulkActions && ( // Conditionally show checkbox column
+              {showBulkActions && (
                 <th className="p-3 w-12">
                   <Checkbox
                     checked={
@@ -625,7 +624,7 @@ export default function EnhancedLeadsTable({
                     (sortDirection === "asc" ? "↑" : "↓")}
                 </div>
               </th>
-              {showActions && ( // Conditionally show actions column
+              {showActions && (
                 <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Actions
                 </th>
@@ -635,7 +634,7 @@ export default function EnhancedLeadsTable({
           <tbody className="w-full">
             {processedLeads.map((lead: Lead) => (
               <tr key={lead.id} className="border-b hover:bg-gray-50">
-                {showBulkActions && ( // Conditionally show checkbox cell
+                {showBulkActions && (
                   <td className="p-3">
                     <Checkbox
                       checked={selectedLeads.includes(lead.id)}
@@ -645,7 +644,6 @@ export default function EnhancedLeadsTable({
                 )}
                 <td className="p-3">
                   <div className="font-medium">{lead.name}</div>
-                  {/* <div className="text-sm text-gray-500">{lead.address}</div> */}
                 </td>
                 <td className="p-3">
                   <div className="flex items-center text-xs">
@@ -729,7 +727,7 @@ export default function EnhancedLeadsTable({
                 <td className="p-3 text-sm">
                   {new Date(lead.createdAt).toLocaleDateString()}
                 </td>
-                {showActions && ( // Conditionally show actions cell
+                {showActions && (
                   <td className="p-3">
                     <div className="flex items-center gap-2">
                       <Link href={`/dashboard/leads/${lead.id}`}>
@@ -737,7 +735,7 @@ export default function EnhancedLeadsTable({
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      {session?.user?.role === "ADMIN" && ( // Only show delete for admins
+                      {session?.user?.role === "ADMIN" && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -766,6 +764,57 @@ export default function EnhancedLeadsTable({
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {data?.pagination && data.pagination.totalPages > 1 && (
+        <div className="flex flex-col md:flex-row items-center justify-between border-t pt-4 gap-4">
+          <div className="text-sm text-gray-700">
+            Showing{" "}
+            <span className="font-medium">
+              {Math.min(data.pagination.itemsPerPage, data.leads.length)}
+            </span>{" "}
+            of <span className="font-medium">{data.pagination.totalItems}</span>{" "}
+            leads
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(data.pagination.currentPage - 1)}
+              disabled={data.pagination.currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {generatePaginationButtons().map((pageNum) => (
+              <Button
+                key={pageNum}
+                variant={
+                  data.pagination.currentPage === pageNum
+                    ? "default"
+                    : "outline"
+                }
+                size="sm"
+                onClick={() => handlePageChange(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(data.pagination.currentPage + 1)}
+              disabled={
+                data.pagination.currentPage === data.pagination.totalPages
+              }
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Modal */}
       {deleteModalOpen && leadToDelete && (
         <DeleteModal

@@ -32,7 +32,7 @@ export async function GET(
       );
     }
 
-    // First, find the internal user
+    //  find the internal user
     let internalUser = null;
     if (userId) {
       internalUser = await prisma.user.findUnique({
@@ -50,13 +50,26 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Now fetch the specific lead, ensuring it belongs to this user
+    //fetch  specific lead, ensuring it belongs to this user
     const lead = await prisma.lead.findFirst({
       where: {
         id: leadId,
         ownerId: internalUser.id,
       },
-      include: {
+      select: {
+        // ✅ EXPLICITLY SELECT ALL FIELDS
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        service: true, // ✅ ADD THIS
+        source: true,
+        priority: true, // ✅ ADD THIS
+        assets: true, // ✅ ADD THIS
+        nextFollowUp: true, // ✅ ADD THIS
+        createdAt: true,
+        // Include relations
         owner: { select: { id: true, name: true, email: true } },
         status: { select: { id: true, name: true } },
         stage: { select: { id: true, name: true } },
@@ -98,7 +111,7 @@ export async function PATCH(
       userEmail,
     } = body;
 
-    // First, find the internal user to verify ownership
+    // find the internal user to verify ownership
     let internalUser = null;
     if (userId) {
       internalUser = await prisma.user.findUnique({
@@ -116,7 +129,7 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Verify that the lead exists and belongs to this user
+    // Verify lead exists and belongs to this user
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: leadId,

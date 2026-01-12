@@ -62,7 +62,6 @@ export default async function LeadDetailPage({ params }: PageProps) {
     );
   }
 
-  // Check if user has permission to edit/delete
   const canEdit =
     session.user.role === "ADMIN" ||
     session.user.role === "PDM" ||
@@ -72,15 +71,15 @@ export default async function LeadDetailPage({ params }: PageProps) {
     <div className="px-6 py-2 space-y-6">
       {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <Link href="/dashboard/leads">
+        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+          <Link href="/dashboard/leads" className="self-start md:self-auto">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Leads
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold">{lead.name}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold">{lead.name}</h1>
             <p className="text-gray-600">Lead Details & Activity</p>
           </div>
         </div>
@@ -198,7 +197,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 <CardTitle>Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-900 bg-gray-50 p-4 rounded-md">
+                <p className="text-sm text-gray-900 bg-gray-50 p-4 rounded-md mr-1.5">
                   {lead.notes}
                 </p>
               </CardContent>

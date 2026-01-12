@@ -84,7 +84,7 @@ export async function POST(
       },
     });
 
-    // ✅ ADD ACTIVITY LOG HERE
+    //  ACTIVITY LOG HERE
     await leadActivityLogs.statusChange(
       leadId,
       lead.name,

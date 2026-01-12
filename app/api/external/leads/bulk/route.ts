@@ -1,4 +1,4 @@
-// lms-internal/src/app/api/external/leads/bulk/route.ts
+// lms-internal/src/app/api/external/leads/bulk/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
@@ -54,13 +54,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!salesUser) {
-      return NextResponse.json(
-        { error: "Invalid sales user" },
-        { status: 400 }
-      );
-    }
-
     // Find default stages/statuses
     const [newStage, newStatus] = await Promise.all([
       prisma.leadStage.findFirst({ where: { name: "NEW" } }),
@@ -74,6 +67,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    //  Helper function to parse dates safely
+    const parseDate = (dateString?: string) => {
+      if (!dateString) return null;
+      try {
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? null : date;
+      } catch {
+        return null;
+      }
+    };
+
+    // ⭐ Helper function to validate priority
+    const validatePriority = (priority?: string): "LOW" | "MEDIUM" | "HIGH" => {
+      const upperPriority = priority?.toUpperCase();
+      if (
+        upperPriority === "HIGH" ||
+        upperPriority === "MEDIUM" ||
+        upperPriority === "LOW"
+      ) {
+        return upperPriority as "LOW" | "MEDIUM" | "HIGH";
+      }
+      return "MEDIUM"; // Default fallback
+    };
+
     // Create leads in bulk
     const createdLeads = await Promise.all(
       leads.map(async (leadData) => {
@@ -85,10 +102,28 @@ export async function POST(req: NextRequest) {
             source: leadData.source || "Bulk Upload",
             notes: leadData.notes || "",
             address: leadData.address || "",
-            priority: "MEDIUM",
+            service: leadData.service || "",
+            assets: leadData.assets || "",
+            priority: validatePriority(leadData.priority),
+            nextFollowUp: parseDate(leadData.nextFollowUp),
             ownerId: salesUser.id,
             stageId: newStage.id,
             statusId: newStatus.id,
+          },
+        });
+      })
+    );
+
+    //OPTIONAL: Create activity logs for tracking
+    await Promise.all(
+      createdLeads.map(async (lead) => {
+        return prisma.activityLog.create({
+          data: {
+            action: "LEAD_CREATED",
+            details: `Lead "${lead.name}" created via CSV bulk upload`,
+            newValue: lead.name,
+            leadId: lead.id,
+            userId: salesUser.id,
           },
         });
       })

@@ -27,7 +27,7 @@ export async function GET() {
 
     // Leads needing review
     const leadsToReview = await prisma.lead.findMany({
-      where: { statusId: newStatus.id },
+      where: { statusId: newStatus.id, isDeleted: false },
       include: {
         owner: { select: { name: true } },
         status: { select: { name: true } },

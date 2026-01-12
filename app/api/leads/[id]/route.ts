@@ -41,6 +41,7 @@ export async function GET(
   }
 }
 
+// Hard DELETE method - commented out for soft delete implementation
 // export async function DELETE(
 //   req: Request,
 //   { params }: { params: Promise<{ id: string }> }
@@ -120,6 +121,18 @@ export async function DELETE(
       },
     });
 
+    // ✅ CREATE ACTIVITY LOG FOR DELETE
+    await prisma.activityLog.create({
+      data: {
+        action: "LEAD_DELETED", // Make sure this action type exists
+        details: `Lead "${leadToDelete.name}" archived. Reason: ${reason}`,
+        oldValue: "ACTIVE",
+        newValue: "ARCHIVED",
+        leadId: id,
+        userId: session.user.id,
+      },
+    });
+
     // Create audit log
     await prisma.deletionAudit.create({
       data: {
@@ -144,11 +157,9 @@ export async function DELETE(
 
       if (!emailSent) {
         console.warn("Deletion email notification failed to send");
-        // Still proceed with the deletion, just log the warning
       }
     } catch (emailError) {
       console.error("Email notification failed:", emailError);
-      // Don't fail the request if email fails
     }
 
     return new NextResponse(null, { status: 204 });

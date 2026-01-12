@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// app/dashboard/review/page.tsx (CLIENT-SIDE VERSION)
+// app/dashboard/review/page.tsx (FIXED)
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   CheckCircle,
@@ -15,6 +16,7 @@ import {
   Phone,
   Eye,
   Clock,
+  Search,
 } from "lucide-react";
 import { RejectionModal } from "@/components/RejectionModal";
 import { reviewToasts, showToast } from "@/lib/toast";
@@ -35,7 +37,7 @@ export default function ReviewPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectingLead, setRejectingLead] = useState<Lead | null>(null);
-  const [rejectionNotes, setRejectionNotes] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchLeads();
@@ -55,6 +57,24 @@ export default function ReviewPage() {
     }
   };
 
+  const filteredLeads = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return leads;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    return leads.filter((lead) => {
+      return (
+        lead.name.toLowerCase().includes(searchLower) ||
+        lead.email.toLowerCase().includes(searchLower) ||
+        (lead.service && lead.service.toLowerCase().includes(searchLower)) ||
+        (lead.phone && lead.phone.includes(searchTerm)) ||
+        (lead.owner?.name &&
+          lead.owner.name.toLowerCase().includes(searchLower))
+      );
+    });
+  }, [leads, searchTerm]);
+
   const handleApprove = async (leadId: string) => {
     try {
       const response = await fetch(`/api/leads/${leadId}/review`, {
@@ -64,15 +84,13 @@ export default function ReviewPage() {
       });
 
       if (response.ok) {
-        // Remove from UI immediately
         setLeads(leads.filter((lead) => lead.id !== leadId));
-        // Show success message
-        // alert("Lead approved successfully!");
-        leads.map((lead) => reviewToasts.approved(lead.name));
+        reviewToasts.approved(
+          `${leads.find((lead) => lead.id === leadId)?.name}`
+        );
       }
     } catch (error) {
       console.error("Error approving lead:", error);
-      // alert("Failed to approve lead");
       showToast.error("Failed to approve lead");
     }
   };
@@ -86,16 +104,13 @@ export default function ReviewPage() {
       });
 
       if (response.ok) {
-        // Remove from UI immediately
         setLeads(leads.filter((lead) => lead.id !== leadId));
         setRejectingLead(null);
-        setRejectionNotes("");
-        // Show success message
-        alert("Lead rejected successfully!");
+        showToast.success("Lead rejected successfully!");
       }
     } catch (error) {
       console.error("Error rejecting lead:", error);
-      alert("Failed to reject lead");
+      showToast.error("Failed to reject lead");
     }
   };
 
@@ -111,7 +126,7 @@ export default function ReviewPage() {
             Dashboard
           </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">Lead Review</h1>
           <p className="text-gray-600">
             Review and approve new leads submitted by sales team
@@ -119,9 +134,9 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      {/* Stats & Search */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="md:col-span-3">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -129,8 +144,25 @@ export default function ReviewPage() {
                   Leads Pending Review
                 </p>
                 <p className="text-2xl font-bold">{leads.length}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {filteredLeads.length} match search
+                </p>
               </div>
               <Clock className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </CardContent>
         </Card>
@@ -138,17 +170,34 @@ export default function ReviewPage() {
 
       {/* Leads Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Leads Awaiting Review</CardTitle>
+          {searchTerm && (
+            <p className="text-sm text-gray-600">
+              Showing {filteredLeads.length} of {leads.length} leads
+            </p>
+          )}
         </CardHeader>
         <CardContent>
-          {leads.length === 0 ? (
+          {filteredLeads.length === 0 ? (
             <div className="text-center py-12">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">
-                All caught up!
-              </h3>
-              <p className="text-gray-600">No leads pending review.</p>
+              {leads.length === 0 ? (
+                <>
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    All caught up!
+                  </h3>
+                  <p className="text-gray-600">No leads pending review.</p>
+                </>
+              ) : (
+                <>
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    No matching leads
+                  </h3>
+                  <p className="text-gray-600">Try a different search term</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -173,7 +222,7 @@ export default function ReviewPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leads.map((lead) => (
+                  {filteredLeads.map((lead) => (
                     <tr key={lead.id} className="border-b hover:bg-gray-50">
                       <td className="p-3">
                         <div className="font-medium">{lead.name}</div>

@@ -1,10 +1,11 @@
+// app/dashboard/verification/page.tsx (COMPLETE FIXED VERSION)
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-// import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -14,9 +15,12 @@ import {
   Phone,
   Eye,
   Clock,
+  Search,
 } from "lucide-react";
 import { RejectionModal } from "@/components/RejectionModal";
+import { reviewToasts, showToast } from "@/lib/toast";
 
+// 👉 INTERFACE: Define what a Lead looks like
 interface Lead {
   id: string;
   name: string;
@@ -30,31 +34,64 @@ interface Lead {
 }
 
 export default function VerificationPage() {
-  // const router = useRouter();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rejectingLead, setRejectingLead] = useState<Lead | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [rejectionNotes, setRejectionNotes] = useState("");
+  // 👉 STATE VARIABLES
+  const [leads, setLeads] = useState<Lead[]>([]); // All leads from API
+  const [loading, setLoading] = useState(true); // Loading state
+  const [rejectingLead, setRejectingLead] = useState<Lead | null>(null); // Lead being rejected
+  const [searchTerm, setSearchTerm] = useState(""); // Search input value
 
+  // 👉 EFFECT: Fetch leads when component loads
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, []); // Empty array = runs once on mount
 
+  // 👉 FUNCTION: Fetch leads from API
   const fetchLeads = async () => {
     try {
       const response = await fetch("/api/leads/verification");
       if (response.ok) {
         const data = await response.json();
-        setLeads(data.leads);
+        setLeads(data.leads); // Store leads in state
       }
     } catch (error) {
       console.error("Error fetching verification leads:", error);
+      showToast.error("Failed to load leads");
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop loading
     }
   };
 
+  // 👉 USE MEMO: Filter leads based on search term
+  // This replaces the old filterLeads function + useEffect
+  const filteredLeads = useMemo(() => {
+    // If no search term, return all leads
+    if (!searchTerm.trim()) {
+      return leads;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+
+    // Filter leads based on search criteria
+    return leads.filter((lead) => {
+      return (
+        // Search by name
+        lead.name.toLowerCase().includes(searchLower) ||
+        // Search by email
+        lead.email.toLowerCase().includes(searchLower) ||
+        // Search by service (if exists)
+        (lead.service && lead.service.toLowerCase().includes(searchLower)) ||
+        // Search by phone (if exists)
+        (lead.phone && lead.phone.includes(searchTerm)) ||
+        // Search by owner name (if exists)
+        (lead.owner?.name &&
+          lead.owner.name.toLowerCase().includes(searchLower)) ||
+        // Search by priority
+        lead.priority.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [leads, searchTerm]); // Re-run when leads or searchTerm changes
+
+  // 👉 FUNCTION: Verify a lead
   const handleVerify = async (leadId: string) => {
     try {
       const response = await fetch(`/api/leads/${leadId}/verification`, {
@@ -64,17 +101,20 @@ export default function VerificationPage() {
       });
 
       if (response.ok) {
-        // Remove from UI immediately
+        const leadName = leads.find((lead) => lead.id === leadId)?.name;
+        // Remove verified lead from state
         setLeads(leads.filter((lead) => lead.id !== leadId));
         // Show success message
-        alert("Lead verified successfully!");
+        reviewToasts.verified(leadName || "Lead");
+        showToast.success(`Lead "${leadName}" verified successfully!`);
       }
     } catch (error) {
       console.error("Error verifying lead:", error);
-      alert("Failed to verify lead");
+      showToast.error("Failed to verify lead");
     }
   };
 
+  // 👉 FUNCTION: Mark a lead as invalid
   const handleInvalidate = async (leadId: string, notes: string) => {
     try {
       const response = await fetch(`/api/leads/${leadId}/verification`, {
@@ -84,24 +124,31 @@ export default function VerificationPage() {
       });
 
       if (response.ok) {
-        // Remove from UI immediately
+        // Remove invalidated lead from state
         setLeads(leads.filter((lead) => lead.id !== leadId));
+        // Close modal
         setRejectingLead(null);
-        setRejectionNotes("");
         // Show success message
-        alert("Lead marked as invalid successfully!");
+        showToast.success("Lead marked as invalid successfully!");
       }
     } catch (error) {
       console.error("Error invalidating lead:", error);
-      alert("Failed to mark lead as invalid");
+      showToast.error("Failed to mark lead as invalid");
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  // 👉 LOADING STATE
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      {/* 👉 HEADER SECTION */}
       <div className="flex flex-col md:flex-row items-center gap-4">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">
@@ -109,7 +156,7 @@ export default function VerificationPage() {
             Dashboard
           </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">Lead Verification</h1>
           <p className="text-gray-600">
             Verify contact information and lead authenticity
@@ -117,9 +164,10 @@ export default function VerificationPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      {/* 👉 STATS & SEARCH SECTION */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Stats Card */}
+        <Card className="md:col-span-3">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -127,28 +175,69 @@ export default function VerificationPage() {
                   Leads Pending Verification
                 </p>
                 <p className="text-2xl font-bold">{leads.length}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {filteredLeads.length} match search
+                </p>
               </div>
               <Clock className="h-8 w-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
+
+        {/* Search Card */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Leads Table */}
+      {/* 👉 LEADS TABLE SECTION */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Leads Awaiting Verification</CardTitle>
+          {searchTerm && (
+            <p className="text-sm text-gray-600">
+              Showing {filteredLeads.length} of {leads.length} leads
+            </p>
+          )}
         </CardHeader>
         <CardContent>
-          {leads.length === 0 ? (
+          {/* 👉 EMPTY STATE */}
+          {filteredLeads.length === 0 ? (
             <div className="text-center py-12">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">
-                All caught up!
-              </h3>
-              <p className="text-gray-600">No leads pending verification.</p>
+              {leads.length === 0 ? (
+                // No leads at all
+                <>
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    All caught up!
+                  </h3>
+                  <p className="text-gray-600">
+                    No leads pending verification.
+                  </p>
+                </>
+              ) : (
+                // No matches for search
+                <>
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    No matching leads
+                  </h3>
+                  <p className="text-gray-600">Try a different search term</p>
+                </>
+              )}
             </div>
           ) : (
+            // 👉 TABLE WITH LEADS
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -174,14 +263,17 @@ export default function VerificationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leads.map((lead) => (
+                  {filteredLeads.map((lead) => (
                     <tr key={lead.id} className="border-b hover:bg-gray-50">
+                      {/* Company Name & Service */}
                       <td className="p-3">
                         <div className="font-medium">{lead.name}</div>
                         <div className="text-sm text-gray-500">
                           {lead.service || "No service specified"}
                         </div>
                       </td>
+
+                      {/* Contact Info */}
                       <td className="p-3">
                         <div className="flex items-center text-sm">
                           <Mail className="h-3 w-3 mr-1 text-gray-400" />
@@ -192,14 +284,20 @@ export default function VerificationPage() {
                           {lead.phone || "N/A"}
                         </div>
                       </td>
+
+                      {/* Submitted By */}
                       <td className="p-3 text-sm">
                         {lead.owner?.name || "Unassigned"}
                       </td>
+
+                      {/* Status Badge */}
                       <td className="p-3 text-sm">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           {lead.status?.name || "REVIEWED"}
                         </span>
                       </td>
+
+                      {/* Priority Badge */}
                       <td className="p-3">
                         <Badge
                           className={
@@ -213,14 +311,19 @@ export default function VerificationPage() {
                           {lead.priority}
                         </Badge>
                       </td>
+
+                      {/* Action Buttons */}
                       <td className="p-3">
                         <div className="flex items-center gap-2">
+                          {/* View Button */}
                           <Link href={`/dashboard/leads/${lead.id}`}>
                             <Button variant="outline" size="sm">
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
                           </Link>
+
+                          {/* Verify Button */}
                           <Button
                             onClick={() => handleVerify(lead.id)}
                             size="sm"
@@ -229,13 +332,15 @@ export default function VerificationPage() {
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Verify
                           </Button>
+
+                          {/* Invalid Button */}
                           <Button
                             onClick={() => setRejectingLead(lead)}
                             variant="destructive"
                             size="sm"
                           >
                             <XCircle className="h-4 w-4 mr-1" />
-                            Invalid
+                            Reject
                           </Button>
                         </div>
                       </td>
@@ -248,7 +353,7 @@ export default function VerificationPage() {
         </CardContent>
       </Card>
 
-      {/* Rejection/Invalidation Modal */}
+      {/* 👉 REJECTION/INVALIDATION MODAL */}
       <RejectionModal
         open={!!rejectingLead}
         onClose={() => setRejectingLead(null)}

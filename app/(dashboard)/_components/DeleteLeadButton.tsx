@@ -31,7 +31,7 @@ export function DeleteLeadButton({ leadId, leadName }: DeleteLeadButtonProps) {
         showToast.success("Lead archived successfully!");
         setDeleteModalOpen(false);
         router.push("/dashboard/leads");
-        router.refresh(); // Refresh the page to show changes
+        router.refresh();
       } else {
         throw new Error("Failed to delete lead");
       }
@@ -51,15 +51,15 @@ export function DeleteLeadButton({ leadId, leadName }: DeleteLeadButtonProps) {
         className="flex items-center gap-2"
       >
         <Trash2 className="h-4 w-4" />
-        Archive Lead
+        Delete Lead
       </Button>
 
       <DeleteModal
         open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteLead}
-        title="Archive Lead"
-        description="This lead will be moved to archives. The CTO will be notified of this action."
+        title="Delete Lead"
+        description="This lead will be deleted."
         itemName={leadName}
         isLoading={isDeleting}
       />

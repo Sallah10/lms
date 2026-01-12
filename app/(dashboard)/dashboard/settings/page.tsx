@@ -1,4 +1,4 @@
-// app/dashboard/settings/page.tsx - FIXED VERSION
+// app/dashboard/settings/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,7 +17,7 @@ import {
   Calendar,
   Hash,
 } from "lucide-react";
-import { toast } from "sonner"; // or your toast library
+import { toast } from "sonner";
 
 interface UserData {
   id: string;

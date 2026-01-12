@@ -34,6 +34,7 @@ export async function GET() {
         statusId: reviewedStatus.id,
         // Also ensure they're not onboarded yet
         onboarded: false,
+        isDeleted: false,
       },
       include: {
         owner: { select: { name: true } },

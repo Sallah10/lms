@@ -10,10 +10,9 @@ export async function sendDeletionNotificationEmail(
   assignedTo: string
 ): Promise<boolean> {
   try {
-    // Get multiple recipients from environment variable
     const recipientEmails = process.env.DELETION_NOTIFICATION_EMAILS?.split(
       ","
-    ) || [process.env.CTO_EMAIL || "cto@yourcompany.com"];
+    ) || [process.env.CTO_EMAIL || "muhammedbello030@gmail.com"];
 
     // Remove any empty strings and trim whitespace
     const cleanRecipients = recipientEmails
@@ -27,9 +26,12 @@ export async function sendDeletionNotificationEmail(
 
     const { error } = await resend.emails.send({
       //   from: "LMS System <system@yourdomain.com>",
-      from: "LMS System <onboarding@resend.dev>",
-      to: cleanRecipients, // ✅ NOW SENDS TO MULTIPLE RECIPIENTS
-      subject: `🚨 Lead Deleted: ${leadName}`,
+      // from: "LMS System <noreply@muhammedbello030@gmail.com>",
+      // to: cleanRecipients,
+      // subject: `🚨 Lead Deleted: ${leadName}`,
+      from: "LMS <onboarding@resend.dev>",
+      to: ["muhammedbello030@gmail.com"], // Your personal email that works
+      subject: `Lead Deleted: ${leadName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">
@@ -72,7 +74,7 @@ export async function sendDeletionNotificationEmail(
             <ul style="margin: 0; padding-left: 20px;">
               <li>This lead has been soft deleted and can be restored from archives</li>
               <li>Review the deletion reason for compliance</li>
-              <li>Contact ${deleterName} if additional context is needed</li>
+              <li>Contact ${deleterEmail} if additional context is needed</li>
             </ul>
           </div>
 
@@ -89,7 +91,6 @@ export async function sendDeletionNotificationEmail(
       return false;
     }
 
-    // console.log(`Deletion notification sent to: ${cleanRecipients.join(", ")}`);
     return true;
   } catch (error) {
     console.error("Email sending failed:", error);

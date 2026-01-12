@@ -27,7 +27,7 @@ export default function LeadsPage() {
   const handleExport = async () => {
     try {
       showToast.loading("Preparing export...");
-      // Build query string from current filters (which are in THIS component)
+
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (priorityFilter !== "all") params.append("priority", priorityFilter);
@@ -61,9 +61,9 @@ export default function LeadsPage() {
     }
   };
 
-  // NEW: Refresh function
+  //  Refresh function
   const handleRefresh = useCallback(() => {
-    setRefreshKey((prev) => prev + 1); // This will trigger EnhancedLeadsTable to refetch
+    setRefreshKey((prev) => prev + 1);
   }, []);
 
   return (
@@ -106,12 +106,6 @@ export default function LeadsPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            {/* <Link href="/dashboard/leads/new">
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create New
-            </Button>
-          </Link> */}
 
             <Link href="/dashboard/leads/new">
               <Button className="flex items-center gap-2">

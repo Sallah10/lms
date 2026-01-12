@@ -18,7 +18,7 @@ import {
   // LayoutDashboardIcon
 } from "lucide-react";
 
-// Define ALL possible navigation items
+// navigation items
 const allNavItems = [
   {
     name: "Dashboard",

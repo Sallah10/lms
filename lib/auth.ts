@@ -32,6 +32,10 @@ export const authOptions: AuthOptions = {
         );
         if (!isValid) return null;
 
+        if (user.role !== "ADMIN" && !user.isActive) {
+          throw new Error("Account not activated yet. Contact admin.");
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -46,7 +50,7 @@ export const authOptions: AuthOptions = {
     // }),
   ],
   pages: {
-    signIn: "/login", // This tells NextAuth to use your custom login page
+    signIn: "/login",
   },
   session: {
     strategy: "jwt",
@@ -68,10 +72,7 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
-    // async redirect({ url, baseUrl }) {
-    //   // Don’t redirect API calls
-    //   if (url.startsWith("/api")) return baseUrl;
-    //   return url;
+
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       else if (new URL(url).origin === baseUrl) return url;
@@ -88,8 +89,8 @@ export const authOptions: AuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true, // Secure in production only
-        maxAge: 30 * 24 * 60 * 60, // ← 30 days for the cookie too
+        secure: true,
+        maxAge: 30 * 24 * 60 * 60,
       },
     },
   },

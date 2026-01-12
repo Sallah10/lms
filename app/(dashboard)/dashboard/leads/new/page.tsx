@@ -25,7 +25,7 @@ import {
   FileText,
   AlertCircle,
   Building,
-  Layers, // added icon
+  Layers,
 } from "lucide-react";
 import { showToast } from "@/lib/toast";
 
@@ -40,17 +40,6 @@ const AVAILABLE_SERVICES = [
   "Gadgets and Accessories",
   "Foods & Drinks",
 ];
-
-// const SOURCE_OPTIONS = [
-//   "Website",
-//   "Referral",
-//   "Social Media",
-//   "Cold Call",
-//   "Event",
-//   "Partnership",
-//   "Existing Customer",
-//   "Other"
-// ];
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -109,8 +98,8 @@ export default function NewLeadPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard/leads">
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+        <Link href="/dashboard/leads" className="self-start md:self-auto">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Leads
@@ -196,7 +185,7 @@ export default function NewLeadPage() {
                     Assets
                   </label>
                   <Textarea
-                    name="assets" // <-- added name so handleChange updates form.assets
+                    name="assets"
                     value={form.assets}
                     onChange={handleChange}
                     placeholder="List any assets or equipment included..."
@@ -276,27 +265,6 @@ export default function NewLeadPage() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Source *
-                  </label>
-                  <Select
-                    value={form.source}
-                    onValueChange={(value) => handleSelectChange("source", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="How did you find this lead?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SOURCE_OPTIONS.map((source) => (
-                        <SelectItem key={source} value={source}>
-                          {source}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div> */}
 
                 <div className="space-y-2">
                   <label className="flex items-center text-sm font-medium text-gray-700">

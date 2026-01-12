@@ -1,4 +1,4 @@
-// components/DateRangeFilter.tsx - FIXED VERSION
+// components/DateRangeFilter.tsx
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -73,13 +73,12 @@ export function DateRangeFilter({
             onSelect={(date) => {
               const newStart = date || undefined;
               setStartDate(newStart);
-              // Update parent immediately with new start date
               onDateRangeChange({
                 start: newStart || null,
                 end: endDate || null,
               });
             }}
-            disabled={(date) => (endDate ? date > endDate : false)} // Disable dates after end
+            disabled={(date) => (endDate ? date > endDate : false)}
             autoFocus
           />
         </PopoverContent>
@@ -105,13 +104,12 @@ export function DateRangeFilter({
             onSelect={(date) => {
               const newEnd = date || undefined;
               setEndDate(newEnd);
-              // Update parent immediately with new end date
               onDateRangeChange({
                 start: startDate || null,
                 end: newEnd || null,
               });
             }}
-            disabled={(date) => (startDate ? date < startDate : false)} // Disable dates before start
+            disabled={(date) => (startDate ? date < startDate : false)}
             autoFocus
           />
         </PopoverContent>
@@ -132,8 +130,6 @@ export function DateRangeFilter({
           Clear
         </Button>
       )}
-
-      {/* REMOVE the "Apply Filter" button - it's causing the issue */}
     </div>
   );
 }

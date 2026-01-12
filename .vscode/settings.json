@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["nextauth"]
+  "cSpell.words": ["nextauth"],
+  "prisma.pinToPrisma6": true
 }

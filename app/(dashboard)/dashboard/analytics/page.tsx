@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top tabs (Analytics / Reports) — optional */}
+      {/* Top tabs (Analytics / Reports) */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
@@ -266,7 +266,6 @@ export default function AnalyticsPage() {
                     <div className="text-xs text-gray-500">{l.phone}</div>
                   </td>
                   <td className="py-3 pr-6">{l.stage?.name ?? "-"}</td>
-                  {/* <td className="py-3 pr-6">{l.status}</td> */}
                   <td className="py-3 pr-6">{l.status?.name ?? "-"}</td>
                   <td className="py-3 pr-6">{l.owner?.name ?? "—"}</td>
                   <td className="py-3 pr-6">

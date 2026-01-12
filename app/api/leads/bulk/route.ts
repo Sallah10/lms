@@ -74,7 +74,7 @@ export async function PATCH(req: Request) {
       },
       data: {
         statusId: statusRecord.id,
-        inputedStatus: status, // Also update the text field if needed
+        inputedStatus: status, //  update the text field if needed
       },
     });
 

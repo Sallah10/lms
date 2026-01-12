@@ -56,8 +56,8 @@ export async function POST(
 
     // CORRECT CODE for review API:
     if (action === "APPROVE") {
-      newStatusId = reviewedStatus.id; // ✅ Set to REVIEWED
-      inputedStatus = "REVIEWED"; // ✅ Goes to verification queue
+      newStatusId = reviewedStatus.id;
+      inputedStatus = "REVIEWED";
     } else if (action === "REJECT") {
       newStatusId = rejectedStatus.id;
       inputedStatus = "REJECTED";

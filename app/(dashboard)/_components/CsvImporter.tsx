@@ -2,7 +2,7 @@
 // components/CsvImporter.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react"; // ADD useRef
 import { Button } from "@/components/ui/button";
 import {
   Upload,
@@ -32,10 +32,11 @@ export default function CsvImporter({ onClose }: { onClose: () => void }) {
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [fileName, setFileName] = useState("");
+  const [showWarning, setShowWarning] = useState(false);
+  const [fileSelected, setFileSelected] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); // ADD ref
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -45,15 +46,24 @@ export default function CsvImporter({ onClose }: { onClose: () => void }) {
     }
 
     setFileName(file.name);
-    setIsImporting(true);
+    setFileSelected(true);
+    setShowWarning(true); // Show warning when file is selected
     setResult(null);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!fileSelected || !fileInputRef.current?.files?.[0]) return;
+
+    setIsImporting(true);
+    setShowWarning(false);
+
+    const file = fileInputRef.current.files[0];
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/parse-csv", {
-        // Use your existing parse-csv endpoint
+      const res = await fetch("/api/leads/import", {
         method: "POST",
         body: formData,
       });
@@ -64,26 +74,28 @@ export default function CsvImporter({ onClose }: { onClose: () => void }) {
         setResult({
           success: true,
           message: data.message || "Import successful",
-          importedCount: data.count || 0,
+          importedCount: data.importedCount || 0,
           errorCount: 0,
           duplicatesCount: data.duplicatesCount,
           duplicates: data.duplicates,
         });
-        showToast.success(`Imported ${data.count} leads successfully`);
+        showToast.success(`Imported ${data.importedCount} leads successfully`);
       } else {
         setResult({
           success: false,
           message: data.error || "Import failed",
           importedCount: 0,
-          errorCount: data.validCount ? data.totalCount - data.validCount : 0,
-          errors: data.details,
+          errorCount: data.errorCount || 0,
+          errors: data.errors || data.details,
+          duplicatesCount: data.duplicatesCount,
+          duplicates: data.duplicates,
         });
         showToast.error(data.error || "Import failed");
       }
     } catch (error) {
       setResult({
         success: false,
-        message: `Network error during import, ${error}`,
+        message: `Network error during import: ${error}`,
         importedCount: 0,
         errorCount: 0,
       });
@@ -94,9 +106,10 @@ export default function CsvImporter({ onClose }: { onClose: () => void }) {
   };
 
   const downloadTemplate = () => {
-    const template = `Partners Name,Email Address,Phone Number,Business Address,Service Type,Lead Source,Priority Level,Additional Notes,Next Follow-up Date
-Acme Inc,acme@example.com,+1234567890,123 Business Rd,Chat with a doctor,Website,HIGH,Interested in healthcare,2024-01-15
-Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referral,MEDIUM,Looking for partnership,2024-01-20`;
+    const template = `Partners Name,Email Address,Phone Number,Business Address,Service Type,Lead Source,Priority Level,Additional Notes,Assets,Next Follow-up Date
+Acme Inc,acme@example.com,1234567890,123 Business Rd,Logistics,Website,HIGH,Interested in fleet management,"5 Trucks, 2 Vans",1/15/2024
+Global Corp,global@example.com,987654321,456 Corporate Ave,Food & Drinks,Referral,MEDIUM,Looking for cold chain logistics,Refrigerated Trucks,1/20/2024
+Tech Solutions,tech@example.com,1122334455,789 Tech Park,Pharmacy,Google Ads,LOW,Need medical equipment transport,Medical Devices,1/25/2024`;
 
     const blob = new Blob([template], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -105,6 +118,15 @@ Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referra
     link.download = "leads_import_template.csv";
     link.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const handleCancelWarning = () => {
+    setShowWarning(false);
+    setFileSelected(false);
+    setFileName("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -127,10 +149,11 @@ Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referra
               <span>Upload a CSV file</span>
               <input
                 id="csv-file"
+                ref={fileInputRef} // ADD ref here
                 name="csv-file"
                 type="file"
                 accept=".csv"
-                onChange={handleFileUpload}
+                onChange={handleFileSelect} // Use handleFileSelect instead of handleFileUpload
                 disabled={isImporting}
                 className="sr-only"
               />
@@ -141,10 +164,18 @@ Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referra
         </div>
       </div>
 
-      {fileName && (
+      {fileName && !showWarning && (
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <FileText className="h-4 w-4" />
           <span>{fileName}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancelWarning}
+            className="text-red-600 hover:text-red-700"
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
@@ -256,42 +287,91 @@ Global Corp,global@example.com,+0987654321,456 Corporate Ave,Open Market,Referra
       </div>
 
       <div className="bg-blue-50 p-4 rounded-lg">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-medium text-blue-900 mb-2">
-            CSV Format Requirements: (Flexible Column Names)
-          </h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>
-              • <strong>Name columns:</strong> "Name", "Company", "Partners
-              Name", "Business Name&quot;
-            </li>
-            <li>
-              • <strong>Email columns:</strong> "Email", "Email Address", "Mail"
-            </li>
-            <li>
-              • <strong>Phone columns:</strong> "Phone", "Phone Number",
-              "Telephone", "Mobile"
-            </li>
-            <li>
-              • <strong>Address columns:</strong> "Address", "Business Address",
-              "Location"
-            </li>
-            <li>
-              • <strong>Required:</strong> Some form of Name and Email fields
-            </li>
-            <li>
-              • <strong>Priority values:</strong> HIGH, MEDIUM, LOW
-            </li>
-            <li>
-              • <strong>Date format:</strong> YYYY-MM-DD or MM/DD/YYYY
-            </li>
-            <li>
-              • <strong>Max file size:</strong> 10MB
-            </li>
-            <li>• Duplicate emails will be detected and flagged</li>
-          </ul>
-        </div>
+        <h4 className="font-medium text-blue-900 mb-2">
+          CSV Format Requirements: (Flexible Column Names)
+        </h4>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>
+            • <strong>Required:</strong> Name/Company and Email fields
+          </li>
+          <li>
+            • <strong>Supported modules:</strong> Logistics, Food & Drinks, Chat
+            With a Doctor, etc.
+          </li>
+          <li>
+            • <strong>Name columns:</strong> "Name", "Company", "Partners Name",
+            "Business Name"
+          </li>
+          <li>
+            • <strong>Email columns:</strong> "Email", "Email Address", "Mail"
+          </li>
+          <li>
+            • <strong>Phone columns:</strong> "Phone", "Phone Number",
+            "Telephone", "Mobile"
+          </li>
+          <li>
+            • <strong>Address columns:</strong> "Address", "Business Address",
+            "Location"
+          </li>
+          <li>
+            • <strong>Assets column:</strong> For logistics (trucks, equipment,
+            fleet details)
+          </li>
+          <li>
+            • <strong>Priority values:</strong> HIGH, MEDIUM, LOW
+          </li>
+          <li>
+            • <strong>Date format:</strong> YYYY-MM-DD or MM/DD/YYYY
+          </li>
+          <li>
+            • <strong>Max file size:</strong> 10MB
+          </li>
+          <li>• Duplicate emails will be detected and flagged</li>
+          <li>• Unknown columns will be added to notes</li>
+        </ul>
       </div>
+
+      {/* Warning Modal - MOVED TO BOTTOM */}
+      {showWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center space-x-3 mb-4">
+              <AlertCircle className="h-6 w-6 text-orange-500" />
+              <h3 className="text-lg font-semibold">Confirm Import</h3>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              You are about to import <strong>{fileName}</strong>. Please
+              ensure:
+            </p>
+
+            <ul className="text-sm text-gray-600 space-y-2 mb-6">
+              <li>• Required fields (Name, Email) are present</li>
+              <li>• Email formats are correct</li>
+              <li>• No duplicate records exist</li>
+              <li>• Date formats are consistent (YYYY-MM-DD)</li>
+              <li>• File size is under 10MB</li>
+            </ul>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={handleCancelWarning}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmImport}
+                className="flex-1"
+                disabled={isImporting}
+              >
+                {isImporting ? "Importing..." : "Confirm Import"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

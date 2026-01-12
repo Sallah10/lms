@@ -3,7 +3,6 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-// import { useQueryClient } from "@tanstack/react-query"; // ADD THIS IMPORT
 import EnhancedLeadsTable from "@/app/(dashboard)/_components/EnhancedLeadsTable";
 import { Download, Plus, ArrowLeft, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ export default function MyLeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  // const queryClient = useQueryClient();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Custom fetch function for user's own leads
@@ -30,10 +28,6 @@ export default function MyLeadsPage() {
     if (!res.ok) throw new Error("Failed to fetch your leads");
     return res.json();
   }
-
-  // const handleRefresh = () => {
-  //   queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-  // };
 
   const handleExport = async () => {
     try {
@@ -66,7 +60,7 @@ export default function MyLeadsPage() {
   };
 
   const handleRefresh = useCallback(() => {
-    setRefreshKey((prev) => prev + 1); // This will trigger EnhancedLeadsTable to refetch
+    setRefreshKey((prev) => prev + 1);
   }, []);
 
   return (
@@ -187,7 +181,7 @@ export default function MyLeadsPage() {
         fetchFunction={fetchMyLeads}
         queryKey={["my-leads"]}
         showActions={true}
-        showBulkActions={false} // No bulk actions for personal view
+        showBulkActions={false}
       />
     </div>
   );

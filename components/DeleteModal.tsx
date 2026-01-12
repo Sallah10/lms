@@ -61,7 +61,7 @@ export function DeleteModal({
             <p className="font-medium mb-2">Item to delete: {itemName}</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             <label className="text-sm font-medium mb-2">
               Reason for deletion *
             </label>
@@ -71,6 +71,7 @@ export function DeleteModal({
               placeholder="Explain why this item is being deleted..."
               required
               rows={3}
+              className="mt-2"
             />
             <p className="text-xs text-muted-foreground">
               This reason will be recorded in the audit log and sent to the CTO.

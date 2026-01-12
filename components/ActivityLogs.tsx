@@ -69,7 +69,7 @@ export function ActivityLogs({
             <div key={log.id} className="border-l-4 border-blue-500 pl-4 py-2">
               <div className="flex flex-col md:flex-row gap-2 md:justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center flex-col md:flex-row gap-2 mb-1">
+                  <div className="flex items-center flex-col md:flex-row gap-2 mb-1 sm:items-start">
                     <p className="font-medium">{log.action}</p>
                     <span className="text-xs text-gray-500">
                       by {log.user.name}
@@ -90,9 +90,9 @@ export function ActivityLogs({
                   {log.oldValue && log.newValue && (
                     <p className="text-sm text-gray-600 ">
                       Changed from{" "}
-                      <span className="font-medium mr-2">{log.oldValue}</span>
-                      <span className="ml-2">to</span>{" "}
-                      <span className="font-medium">{log.newValue}</span>
+                      <span className="font-medium ml-2">{log.oldValue}</span>{" "}
+                      {""}
+                      to <span className="font-medium">{log.newValue}</span>
                     </p>
                   )}
                 </div>

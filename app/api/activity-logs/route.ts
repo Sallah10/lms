@@ -16,14 +16,19 @@ export async function GET(req: Request) {
     const userId = searchParams.get("userId");
     const limit = Math.min(Number(searchParams.get("limit") || "10"), 100);
 
-    const where: {
-      leadId?: string;
-      userId?: string;
-    } = {};
+    // const where: {
+    //   leadId?: string;
+    //   userId?: string;
+    // } = {};
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
 
     if (leadId) where.leadId = leadId;
 
     if (userId) where.userId = userId;
+
+    console.log("📋 Where clause:", where);
 
     const logs = await prisma.activityLog.findMany({
       where,
@@ -33,6 +38,11 @@ export async function GET(req: Request) {
       },
       orderBy: { createdAt: "desc" },
       take: limit,
+    });
+
+    console.log("📊 Found logs:", logs.length);
+    logs.forEach((log) => {
+      console.log(`- ${log.action}: ${log.details}`);
     });
 
     return NextResponse.json({ logs });

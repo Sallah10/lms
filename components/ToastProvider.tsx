@@ -1,4 +1,3 @@
-// lms-sales-portal/src/components/ToastProvider.tsx
 "use client";
 
 import { Toaster } from "sonner";

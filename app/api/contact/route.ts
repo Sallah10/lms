@@ -1,6 +1,6 @@
 // app/api/contact/route.ts
 import { NextResponse } from "next/server";
-import { resend } from "@/lib/resend"; // Your Resend client
+import { resend } from "@/lib/resend";
 import { getServerSession } from "next-auth";
 // import { authOptions } from "@/lib/auth";
 import { authOptions as aOptions } from "@/lib/auth";
@@ -30,8 +30,8 @@ export async function POST(req: Request) {
 
     // Send email to support team data,
     const { error } = await resend.emails.send({
-      from: "LMS Contact Form <system@yourdomain.com>",
-      to: process.env.SUPPORT_EMAIL || "support@yourcompany.com",
+      from: "LMS Contact Form <muhammedbello030@gmail.com>",
+      to: process.env.SUPPORT_EMAIL || "muhammedbello030@gmail.com",
       replyTo: email,
       subject: `Contact Form: ${subject}`,
       html: `

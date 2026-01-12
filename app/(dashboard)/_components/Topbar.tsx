@@ -7,7 +7,6 @@ export default function Topbar({ user }: { user: any }) {
   return (
     <header className="flex items-center justify-between border-b bg-white p-4">
       {" "}
-      {/* Add margin for sidebar */}
       <div>
         <h1 className="text-lg font-semibold">Welcome, {user?.name}</h1>
         <p className="text-sm text-gray-500 capitalize">{user?.role}</p>

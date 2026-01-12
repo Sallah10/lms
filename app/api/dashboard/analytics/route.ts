@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    // 1️⃣ Basic totals
+    //  totals
     const totalLeads = await prisma.lead.count();
 
     // Get status IDs first
@@ -22,7 +22,7 @@ export async function GET() {
       ? await prisma.lead.count({ where: { statusId: onboardedStatus.id } })
       : 0;
 
-    // 2️⃣ Leads grouped by stage
+    // Leads grouped by stage
     const stages = await prisma.leadStage.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -37,7 +37,7 @@ export async function GET() {
       count: s._count.leads,
     }));
 
-    // 3️⃣ Status distribution
+    // Status distribution
     const statusGroup = await prisma.lead.groupBy({
       by: ["statusId"],
       _count: { _all: true },
@@ -52,7 +52,7 @@ export async function GET() {
       })
     );
 
-    // 4️⃣ Priority distribution
+    // Priority distribution
     const priorityGroup = await prisma.lead.groupBy({
       by: ["priority"],
       _count: { _all: true },
@@ -62,7 +62,7 @@ export async function GET() {
       count: p._count._all, // _count is always defined in Prisma output
     }));
 
-    // 5️ Team performance (number of leads per owner)
+    // Team performance (number of leads per owner)
     const teamGroup = await prisma.lead.groupBy({
       by: ["ownerId"],
       _count: { _all: true },
@@ -82,7 +82,7 @@ export async function GET() {
       leads: g._count._all,
     }));
 
-    // 6️⃣ Follow-ups today (use `date` field)
+    // Follow-ups today
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
@@ -92,8 +92,9 @@ export async function GET() {
       where: { date: { gte: start, lte: end } },
     });
 
-    // 7️⃣ Recent leads (latest 10) with owner & stage
+    // Recent leads (latest 10) with owner & stage
     const recentLeads = await prisma.lead.findMany({
+      where: { isDeleted: false },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {

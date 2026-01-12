@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+// app/api/leads/import/route.ts
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 import { parse } from "csv-parse/sync";
-// import { Role } from "@prisma/client";
 
 type CsvRecord = Record<string, string> & {
   name?: string;
@@ -15,6 +16,7 @@ type CsvRecord = Record<string, string> & {
   notes?: string;
   priority?: string;
   nextFollowUp?: string;
+  assets?: string;
 };
 
 interface ValidLead {
@@ -27,74 +29,150 @@ interface ValidLead {
   notes: string;
   priority: string;
   nextFollowUp?: string;
+  assets?: string;
   salesRepId: string;
 }
 
 function normalizeCsvRecord(record: Record<string, string>): CsvRecord {
   const normalized: Record<string, string> = {};
+  const unknownFields: string[] = [];
 
   for (const [key, value] of Object.entries(record)) {
     const lowerKey = key.toLowerCase().trim();
 
-    // Map various column names to standard fields
+    // Map various column names to standard fields - ORDER MATTERS!
+    // Check for specific column names FIRST, then general keywords
+
+    // NAME/COMPANY MAPPING - Check specific names first
     if (
-      lowerKey.includes("name") ||
-      lowerKey.includes("company") ||
-      lowerKey.includes("partner")
+      lowerKey === "partners name" ||
+      lowerKey === "company name" ||
+      lowerKey === "business name" ||
+      lowerKey.includes("partner name") ||
+      (lowerKey.includes("name") && !lowerKey.includes("address"))
     ) {
       normalized.name = value;
-    } else if (lowerKey.includes("email") || lowerKey.includes("mail")) {
-      normalized.email = value;
-    } else if (
-      lowerKey.includes("phone") ||
-      lowerKey.includes("tel") ||
-      lowerKey.includes("mobile")
+    }
+    // EMAIL MAPPING
+    else if (
+      lowerKey === "email address" ||
+      lowerKey === "email" ||
+      lowerKey.includes("mail")
     ) {
-      normalized.phone = value;
-    } else if (
-      lowerKey.includes("address") ||
-      lowerKey.includes("location") ||
-      lowerKey.includes("addr")
+      normalized.email = value;
+    }
+    // ADDRESS MAPPING - Be specific about address fields
+    else if (
+      lowerKey === "business address" ||
+      lowerKey === "address" ||
+      lowerKey === "physical address" ||
+      (lowerKey.includes("address") && !lowerKey.includes("name"))
     ) {
       normalized.address = value;
-    } else if (
-      lowerKey.includes("service") ||
+    }
+    // PHONE MAPPING
+    else if (
+      lowerKey === "phone number" ||
+      lowerKey === "phone" ||
+      lowerKey.includes("tel") ||
+      lowerKey.includes("mobile") ||
+      lowerKey.includes("contact")
+    ) {
+      normalized.phone = value;
+    }
+    // SERVICE MAPPING
+    else if (
+      lowerKey === "service type" ||
+      lowerKey === "service" ||
       lowerKey.includes("product") ||
-      lowerKey.includes("module")
+      lowerKey.includes("module") ||
+      lowerKey.includes("industry") ||
+      lowerKey.includes("category")
     ) {
       normalized.service = value;
-    } else if (
-      lowerKey.includes("source") ||
+    }
+    // SOURCE MAPPING
+    else if (
+      lowerKey === "lead source" ||
+      lowerKey === "source" ||
       lowerKey.includes("origin") ||
-      lowerKey.includes("referral")
+      lowerKey.includes("referral") ||
+      lowerKey.includes("campaign")
     ) {
       normalized.source = value;
-    } else if (
-      lowerKey.includes("note") ||
+    }
+    // NOTES MAPPING
+    else if (
+      lowerKey === "additional notes" ||
+      lowerKey === "notes" ||
       lowerKey.includes("comment") ||
-      lowerKey.includes("remark")
+      lowerKey.includes("remark") ||
+      lowerKey.includes("description")
     ) {
       normalized.notes = value;
-    } else if (lowerKey.includes("priority") || lowerKey.includes("urgent")) {
+    }
+    // PRIORITY MAPPING
+    else if (
+      lowerKey === "priority level" ||
+      lowerKey === "priority" ||
+      lowerKey.includes("urgent")
+    ) {
       normalized.priority = value;
-    } else if (
+    }
+    // NEXT FOLLOW-UP MAPPING
+    else if (
+      lowerKey === "next follow-up date" ||
+      lowerKey === "next follow-up" ||
       lowerKey.includes("follow") ||
-      lowerKey.includes("next") ||
-      lowerKey.includes("date")
+      (lowerKey.includes("next") && lowerKey.includes("date"))
     ) {
       normalized.nextFollowUp = value;
+    }
+    // ASSETS MAPPING
+    else if (
+      lowerKey === "assets" ||
+      lowerKey === "assets/equipment" ||
+      lowerKey.includes("equipment") ||
+      lowerKey.includes("vehicle") ||
+      lowerKey.includes("fleet") ||
+      lowerKey.includes("inventory")
+    ) {
+      normalized.assets = value;
     } else {
-      // Keep original key for unknown fields
-      normalized[key] = value;
+      // For unknown fields, collect them to add later with proper tagging
+      if (value && value.trim() !== "") {
+        unknownFields.push(`${key}: ${value}`);
+      }
+    }
+  }
+
+  // Add unknown fields to notes with proper tagging and spacing
+  if (unknownFields.length > 0) {
+    const unknownFieldsSection = `\n\n--- Added Information: ---\n${unknownFields.join("\n")}`;
+
+    if (normalized.notes) {
+      // If there are existing notes, append the unknown fields section
+      normalized.notes += unknownFieldsSection;
+    } else {
+      // If no existing notes, create notes with just the unknown fields
+      normalized.notes = unknownFieldsSection;
     }
   }
 
   return normalized as CsvRecord;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+
+    // Only allow ADMIN and PDM to import leads
+    if (
+      !session ||
+      (session.user.role !== Role.ADMIN && session.user.role !== Role.PDM)
+    ) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
     if (!session || !session.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -145,6 +223,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("Raw CSV records:", records); // DEBUG: See what's being parsed
+
     // Validate required fields in each record
     const validLeads: ValidLead[] = [];
     const errors: string[] = [];
@@ -158,7 +238,11 @@ export async function POST(req: NextRequest) {
       const rawRecord = records[i];
       const rowNumber = i + 2; // +2 because of header row and 0-based index
 
+      console.log(`Row ${rowNumber} raw:`, rawRecord); // DEBUG: See raw record
+
       const record = normalizeCsvRecord(rawRecord);
+
+      console.log(`Row ${rowNumber} normalized:`, record); // DEBUG: See normalized record
 
       // Check required fields
       if (!record.name) {
@@ -190,12 +274,11 @@ export async function POST(req: NextRequest) {
           name: existingLead.name,
           existingOwner: existingLead.owner?.name || "Unassigned",
         });
-        // Continue processing but we'll report the duplicate
       }
 
       validLeads.push({
-        name: record.name,
-        email: record.email,
+        name: record.name || "",
+        email: record.email || "",
         phone: record.phone || "",
         address: record.address || "",
         service: record.service || "",
@@ -203,6 +286,7 @@ export async function POST(req: NextRequest) {
         notes: record.notes || "",
         priority: record.priority || "MEDIUM",
         nextFollowUp: record.nextFollowUp,
+        assets: record.assets || "",
         salesRepId: salesRepId,
       });
     }
@@ -241,7 +325,8 @@ export async function POST(req: NextRequest) {
 
     for (const leadData of validLeads) {
       try {
-        await prisma.lead.create({
+        console.log("Creating lead with data:", leadData); // DEBUG: See final data
+        const createdLead = await prisma.lead.create({
           data: {
             name: leadData.name,
             email: leadData.email,
@@ -250,6 +335,7 @@ export async function POST(req: NextRequest) {
             service: leadData.service,
             source: leadData.source,
             notes: leadData.notes,
+            assets: leadData.assets,
             priority: leadData.priority as "HIGH" | "MEDIUM" | "LOW",
             nextFollowUp: leadData.nextFollowUp
               ? new Date(leadData.nextFollowUp)
@@ -259,6 +345,15 @@ export async function POST(req: NextRequest) {
             statusId: newStatus.id,
           },
         });
+        await prisma.activityLog.create({
+          data: {
+            action: "LEAD_CREATED",
+            details: `Lead created via CSV import`,
+            userId: salesRepId,
+            leadId: createdLead.id, // THIS IS CRUCIAL!
+          },
+        });
+
         importedCount++;
       } catch (error) {
         console.error(`Error importing lead ${leadData.email}:`, error);

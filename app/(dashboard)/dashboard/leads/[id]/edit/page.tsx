@@ -46,13 +46,12 @@ const AVAILABLE_SERVICES = [
   "Store",
   "Gadgets and Accessories",
   "Foods & Drinks",
-  "NONE", // Add this option for no service selected
+  "NONE",
 ];
 
-// { params }: { params: { id: string } }
 export default function EditLeadPage() {
   const router = useRouter();
-  const params = useParams(); // Get the params object using the hook
+  const params = useParams();
   const leadId = params.id as string;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
